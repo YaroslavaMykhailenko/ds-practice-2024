@@ -6,6 +6,10 @@ FROM --platform=linux/amd64 python:3.10-slim
 # Both the utils and src folders will be mounted as volumes, please see docker-compose.yaml
 WORKDIR /app
 
+COPY . .
+RUN cd utils/pb && pip install .
+WORKDIR /app
+
 # Copy the requirements file to the working directory
 COPY ./fraud_detection/requirements.txt .
 

@@ -6,10 +6,9 @@ COPY . .
 RUN cd utils/pb && pip install .
 WORKDIR /app
 
-COPY ./orchestrator/requirements.txt .
+COPY ./suggestions/requirements.txt .
 
 RUN pip install --no-cache-dir -r requirements.txt
 RUN pip install reloadium
 
-CMD reloadium run "orchestrator/src/app.py"
-# CMD ["python", "orchestrator/src/app.py"]
+CMD reloadium run "suggestions/src/app.py"
