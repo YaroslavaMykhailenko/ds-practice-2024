@@ -1,5 +1,6 @@
 # Use an official Python runtime as the base image
-FROM python:3.11
+# FROM python:3.10
+FROM --platform=linux/amd64 python:3.10-slim
 
 # Set the working directory in the container
 # Both the utils and src folders will be mounted as volumes, please see docker-compose.yaml
@@ -16,3 +17,4 @@ RUN pip install reloadium
 
 # Set the command to run the container
 CMD reloadium run "orchestrator/src/app.py"
+# CMD ["python", "orchestrator/src/app.py"]

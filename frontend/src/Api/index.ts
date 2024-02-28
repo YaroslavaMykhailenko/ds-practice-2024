@@ -8,7 +8,7 @@ export const responseData = {
         "copiesAvailable": 7,
         "category": "Programming",
         "img": "https://m.media-amazon.com/images/W/MEDIAX_792452-T1/images/I/51FD3C3kLiL.jpg",
-        price: 3
+        price: 10
     },
     "book2": {
         "id": "2",

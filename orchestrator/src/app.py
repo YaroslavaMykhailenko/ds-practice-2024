@@ -12,6 +12,7 @@ import fraud_detection_pb2_grpc as fraud_detection_grpc
 
 import grpc
 
+
 def greet(name='you'):
     # Establish a connection with the fraud-detection gRPC service.
     with grpc.insecure_channel('fraud_detection:50051') as channel:
@@ -33,6 +34,7 @@ app = Flask(__name__)
 # Enable CORS for the app.
 CORS(app)
 
+
 # Define a GET endpoint.
 @app.route('/', methods=['GET'])
 def index():
@@ -40,9 +42,10 @@ def index():
     Responds with 'Hello, [name]' when a GET request is made to '/' endpoint.
     """
     # Test the fraud-detection gRPC service.
-    response = greet(name='orchestrator')
+    response = greet(name='aaa')
     # Return the response.
     return response
+
 
 @app.route('/checkout', methods=['POST'])
 def checkout():
