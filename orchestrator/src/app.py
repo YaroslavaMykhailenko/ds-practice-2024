@@ -16,8 +16,8 @@ CORS(app)
 
 
 from pymongo import MongoClient
-# MONGO_URI = os.getenv('MONGO_URI', 'mongodb://admin:password@mongo:27017/bookstore')
-MONGO_URI = 'mongodb://admin:password@mongodb:27017/bookstore'
+MONGO_URI = os.getenv('MONGO_URI', 'mongodb://admin:password@mongo:27017/bookstore')
+# MONGO_URI = 'mongodb://admin:password@mongodb:27017/bookstore'
 client = MongoClient(MONGO_URI)
 db = client['bookstore']
 
