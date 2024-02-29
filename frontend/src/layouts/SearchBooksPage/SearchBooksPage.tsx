@@ -4,6 +4,8 @@ import {Pagination} from '../Utils/Pagination';
 import {SpinnerLoading} from '../Utils/SpinnerLoading';
 import {SearchBook} from './components/SearchBook';
 import {responseData} from "../../Api";
+import axios from 'axios';
+
 import {Link} from "react-router-dom";
 
 type BookData = {
@@ -33,21 +35,32 @@ export const SearchBooksPage = () => {
     const [search, setSearch] = useState('');
     const [searchResults, setSearchResults] = useState<BookData[]>([]);
 
-    const fetchBooksData = async (): Promise<ResponseData> => {
-        return new Promise((resolve) => {
-            setTimeout(() => {
-                resolve(responseData);
-            }, 1000);
-        });
+    // const fetchBooksData = async (): Promise<ResponseData> => {
+    //     return new Promise((resolve) => {
+    //         setTimeout(() => {
+    //             resolve(responseData);
+    //         }, 1000);
+    //     });
+    // };
+
+    const fetchBooksData = async () => {
+        try {
+            const response = await axios.get('http://0.0.0.0:8081/api/books');
+            console.log(response.data); // Ensure this logs an array of books
+            return response.data; // Assuming this is an array
+        } catch (error) {
+            console.error('Fetch Books Error:', error);
+            throw error; // Rethrow or handle error appropriately
+        }
     };
-
-
+    
     useEffect(() => {
+        console.log("a");
         const fetchBooks = async () => {
             setIsLoading(true);
+            console.log("a");
             try {
-                const responseData = await fetchBooksData();
-                const loadedBooks = Object.values(responseData)
+                const loadedBooks = await fetchBooksData();
                 setBooks(loadedBooks);
                 setSearchResults(loadedBooks); // Set initial search results
                 updatePagination(loadedBooks.length);
@@ -59,7 +72,8 @@ export const SearchBooksPage = () => {
             }
         };
         fetchBooks();
-    },[]);
+    }, []);
+    
 
     const handleSearch = useCallback((searchValue: string) => {
         const filteredResults = books.filter(item =>

@@ -18,6 +18,7 @@ class FraudDetectionService(fraud_detection_pb2_grpc.FraudDetectionServiceServic
         is_fraudulent = False
         return fraud_detection_pb2.FraudCheckResponse(is_fraudulent=is_fraudulent)
 
+
 def serve():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     fraud_detection_pb2_grpc.add_FraudDetectionServiceServicer_to_server(FraudDetectionService(), server)

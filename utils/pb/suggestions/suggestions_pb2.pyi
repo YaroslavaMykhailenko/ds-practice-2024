@@ -18,17 +18,23 @@ class SuggestionsResponse(_message.Message):
     def __init__(self, suggestions: _Optional[_Iterable[_Union[Book, _Mapping]]] = ...) -> None: ...
 
 class Book(_message.Message):
-    __slots__ = ("id", "title", "author", "description", "img", "price")
+    __slots__ = ("id", "title", "author", "description", "copies", "copiesAvailable", "category", "img", "price")
     ID_FIELD_NUMBER: _ClassVar[int]
     TITLE_FIELD_NUMBER: _ClassVar[int]
     AUTHOR_FIELD_NUMBER: _ClassVar[int]
     DESCRIPTION_FIELD_NUMBER: _ClassVar[int]
+    COPIES_FIELD_NUMBER: _ClassVar[int]
+    COPIESAVAILABLE_FIELD_NUMBER: _ClassVar[int]
+    CATEGORY_FIELD_NUMBER: _ClassVar[int]
     IMG_FIELD_NUMBER: _ClassVar[int]
     PRICE_FIELD_NUMBER: _ClassVar[int]
     id: str
     title: str
     author: str
     description: str
+    copies: int
+    copiesAvailable: int
+    category: str
     img: str
     price: int
-    def __init__(self, id: _Optional[str] = ..., title: _Optional[str] = ..., author: _Optional[str] = ..., description: _Optional[str] = ..., img: _Optional[str] = ..., price: _Optional[int] = ...) -> None: ...
+    def __init__(self, id: _Optional[str] = ..., title: _Optional[str] = ..., author: _Optional[str] = ..., description: _Optional[str] = ..., copies: _Optional[int] = ..., copiesAvailable: _Optional[int] = ..., category: _Optional[str] = ..., img: _Optional[str] = ..., price: _Optional[int] = ...) -> None: ...

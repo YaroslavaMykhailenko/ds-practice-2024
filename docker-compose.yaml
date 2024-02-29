@@ -17,6 +17,7 @@ services:
     environment:
       - CHOKIDAR_USEPOLLING=true
       - WDS_SOCKET_PORT=0
+
   orchestrator:
     platform: linux/arm64
     build:
@@ -35,6 +36,7 @@ services:
       # The PYTHONFILE environment variable specifies the absolute entry point of the application
       # Check app.py in the orchestrator directory to see how this is used
       - PYTHONFILE=/app/orchestrator/src/app.py
+      - MONGO_URI=mongodb://admin:password@mongodb:27017/bookstore
     volumes:
       # Mount the utils directory in the current directory to the /app/utils directory in the container
       - ./utils:/app/utils
@@ -79,6 +81,41 @@ services:
     environment:
       - PYTHONUNBUFFERED=TRUE
       - PYTHONFILE=/app/suggestions/src/app.py
+      - MONGO_URI=mongodb://admin:password@mongodb:27017/bookstore
     volumes:
       - ./utils:/app/utils
       - ./suggestions/src:/app/suggestions/src
+
+
+  # https://gist.github.com/gbzarelli/c15b607d62fc98ae436564bf8129ea8e
+  mongodb:
+    container_name: mongodb
+    image: mongo:latest
+    restart: always
+    environment:
+      MONGO_INITDB_DATABASE: bookstore
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password
+    volumes:
+      - mongodb_data:/data/db
+      - ./mongodb/init_scripts/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    ports:
+      - "27017:27017"
+
+  # mongo-express:
+  #   image: mongo-express
+  #   restart: always
+  #   ports:
+  #     - "8099:8081"
+  #   environment:
+  #     ME_CONFIG_MONGODB_ADMINUSERNAME: admin
+  #     ME_CONFIG_MONGODB_ADMINPASSWORD: password
+  #     # ME_CONFIG_MONGODB_SERVER: mongodb
+  #     ME_CONFIG_MONGODB_PORT: 27017
+  #   depends_on:
+  #     - mongo
+  #   links:
+  #     - mongo
+
+volumes:
+  mongodb_data:

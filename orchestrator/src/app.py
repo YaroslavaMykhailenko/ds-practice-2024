@@ -6,12 +6,44 @@ import grpc
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import json
+import os
 
 from tools.logging import setup_logger
 logger = setup_logger("orchestrator")
 
 app = Flask(__name__)
 CORS(app)
+
+
+from pymongo import MongoClient
+# MONGO_URI = os.getenv('MONGO_URI', 'mongodb://admin:password@mongo:27017/bookstore')
+MONGO_URI = 'mongodb://admin:password@mongodb:27017/bookstore'
+client = MongoClient(MONGO_URI)
+db = client['bookstore']
+
+
+@app.route('/api/books', methods=['GET'])
+def get_books():
+    books_cursor = db.books.find({})
+    books = list(books_cursor)
+    for book in books:
+        book['_id'] = str(book['_id'])
+
+    if books:
+        return jsonify(books)
+    else:
+        return jsonify({"error": "Books not found"}), 404
+
+
+@app.route('/api/books/<bookId>', methods=['GET'])
+def get_book(bookId):
+    book = db.books.find_one({"id": bookId}, {'_id': 0})
+    if book:
+        return jsonify(book)
+    else:
+        return jsonify({"error": "Book not found"}), 404
+    
+
 
 
 def call_fraud_detection_service(order_details):
@@ -53,10 +85,12 @@ def call_suggestions_service(order_details):
                 'title': book.title, 
                 'author': book.author, 
                 'description': book.description, 
+                'copies': book.copies, 
+                'copiesAvailable': book.copiesAvailable, 
+                'category': book.category, 
                 'img': book.img, 
                 'price': book.price
             } for book in response.suggestions]
-
     
     logger.info(f"suggested_books: {suggested_books}")
 
