@@ -43,14 +43,15 @@ export const SearchBooksPage = () => {
     //     });
     // };
 
+    // fetching the books data from mongo db
     const fetchBooksData = async () => {
         try {
             const response = await axios.get('http://0.0.0.0:8081/api/books');
-            console.log(response.data); // Ensure this logs an array of books
-            return response.data; // Assuming this is an array
+            console.log(response.data);
+            return response.data;
         } catch (error) {
             console.error('Fetch Books Error:', error);
-            throw error; // Rethrow or handle error appropriately
+            throw error;
         }
     };
     
@@ -62,7 +63,7 @@ export const SearchBooksPage = () => {
             try {
                 const loadedBooks = await fetchBooksData();
                 setBooks(loadedBooks);
-                setSearchResults(loadedBooks); // Set initial search results
+                setSearchResults(loadedBooks);
                 updatePagination(loadedBooks.length);
             } catch (error) {
                 console.error('Fetch Books Error:', error);

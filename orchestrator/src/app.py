@@ -7,6 +7,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import json
 import os
+import threading
 
 from tools.logging import setup_logger
 logger = setup_logger("orchestrator")
@@ -17,11 +18,11 @@ CORS(app)
 
 from pymongo import MongoClient
 MONGO_URI = os.getenv('MONGO_URI', 'mongodb://admin:password@mongo:27017/bookstore')
-# MONGO_URI = 'mongodb://admin:password@mongodb:27017/bookstore'
 client = MongoClient(MONGO_URI)
 db = client['bookstore']
 
 
+# TODO: these functions should be outside
 @app.route('/api/books', methods=['GET'])
 def get_books():
     books_cursor = db.books.find({})
@@ -97,45 +98,68 @@ def call_suggestions_service(order_details):
     return suggested_books
 
 
+def process_order(order_details):
+    results = {}
+
+    def fraud_detection_wrapper():
+        logger.info(f"Starting proceess fraud_detection_service...")
+        results["is_fraudulent"] = call_fraud_detection_service(order_details)
+
+    def transaction_verification_wrapper():
+        logger.info(f"Starting proceess transaction_verification_service...")
+        results["is_valid"] = call_transaction_verification_service(order_details)
+
+    def suggestions_wrapper():
+        logger.info(f"Starting proceess suggestions_service...")
+        results["suggested_books"] = call_suggestions_service(order_details)
+
+    threads = [
+        threading.Thread(target=fraud_detection_wrapper),
+        threading.Thread(target=transaction_verification_wrapper),
+        threading.Thread(target=suggestions_wrapper)
+    ]
+
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+
+    return results
+
+
+
 @app.route('/checkout', methods=['POST'])
 def checkout():
     order_details = request.json
     
-    logger.info(order_details)
-
     if not order_details:
         return jsonify({'error': 'Invalid request'}), 400
 
-    # fraud detection service.
-    # TODO: merge + sync
-    is_fraudulent = call_fraud_detection_service(order_details)
-    if is_fraudulent:
-        return jsonify({
-            'orderId': order_details.get('orderId', 'Unknown'), 
-            'status': 'Order Rejected', 
-            'suggestedBooks': []
-            }), 200
+    results = process_order(order_details)
 
-    # transaction validation service.
-    is_valid = call_transaction_verification_service(order_details)
-    if not is_valid:
+
+    # might merge the responses.
+    if results["is_fraudulent"]:
         return jsonify({
             'orderId': order_details.get('orderId', 'Unknown'), 
             'status': 'Order Rejected', 
             'suggestedBooks': []
-            }), 200
+        }), 200
     
-    # suggestions service.
-    suggested_books = call_suggestions_service(order_details)
+    if not results["is_valid"]:
+        return jsonify({
+            'orderId': order_details.get('orderId', 'Unknown'), 
+            'status': 'Order Rejected', 
+            'suggestedBooks': []
+        }), 200
 
-    # TODO: how do we generate oreder id?
-    order_status_response = jsonify({
+
+    return jsonify({
         'orderId': order_details.get('orderId', 'Unknown'),
         'status': 'Order Approved',
-        'suggestedBooks': suggested_books
+        'suggestedBooks': results["suggested_books"]
     }), 200
 
-    return order_status_response
 
 
 if __name__ == '__main__':

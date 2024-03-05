@@ -54,6 +54,7 @@ const ViewSingleBook: React.FC = () => {
         }
     };
 
+    // by book id
     const handleCheckout = () => {
         navigate(`/checkout/${book?.id}`, { state: { ...book, totalAmount } });
     };
