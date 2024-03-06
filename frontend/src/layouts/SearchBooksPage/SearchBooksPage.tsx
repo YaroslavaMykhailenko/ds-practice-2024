@@ -46,7 +46,7 @@ export const SearchBooksPage = () => {
     // fetching the books data from mongo db
     const fetchBooksData = async () => {
         try {
-            const response = await axios.get('http://0.0.0.0:8081/api/books');
+            const response = await axios.get('http://localhost:8081/api/books');
             console.log(response.data);
             return response.data;
         } catch (error) {

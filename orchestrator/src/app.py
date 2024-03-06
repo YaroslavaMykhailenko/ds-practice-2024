@@ -132,12 +132,14 @@ def process_order(order_details):
 def checkout():
     order_details = request.json
     
+    logger.info(order_details)
+
     if not order_details:
         return jsonify({'error': 'Invalid request'}), 400
 
     results = process_order(order_details)
 
-
+    
     # might merge the responses.
     if results["is_fraudulent"]:
         return jsonify({
