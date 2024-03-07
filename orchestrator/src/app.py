@@ -1,68 +1,172 @@
-import sys
-import os
-
-# This set of lines are needed to import the gRPC stubs.
-# The path of the stubs is relative to the current file, or absolute inside the container.
-# Change these lines only if strictly needed.
-FILE = __file__ if '__file__' in globals() else os.getenv("PYTHONFILE", "")
-utils_path = os.path.abspath(os.path.join(FILE, '../../../utils/pb/fraud_detection'))
-sys.path.insert(0, utils_path)
-import fraud_detection_pb2 as fraud_detection
-import fraud_detection_pb2_grpc as fraud_detection_grpc
+from utils.pb.fraud_detection import fraud_detection_pb2, fraud_detection_pb2_grpc
+from utils.pb.transaction_verification import transaction_verification_pb2, transaction_verification_pb2_grpc
+from utils.pb.suggestions import suggestions_pb2, suggestions_pb2_grpc
 
 import grpc
-
-def greet(name='you'):
-    # Establish a connection with the fraud-detection gRPC service.
-    with grpc.insecure_channel('fraud_detection:50051') as channel:
-        # Create a stub object.
-        stub = fraud_detection_grpc.HelloServiceStub(channel)
-        # Call the service through the stub object.
-        response = stub.SayHello(fraud_detection.HelloRequest(name=name))
-    return response.greeting
-
-# Import Flask.
-# Flask is a web framework for Python.
-# It allows you to build a web application quickly.
-# For more information, see https://flask.palletsprojects.com/en/latest/
-from flask import Flask, request
+from flask import Flask, request, jsonify
 from flask_cors import CORS
+import json
+import os
+import threading
+import uuid
 
-# Create a simple Flask app.
+from tools.logging import setup_logger
+logger = setup_logger("orchestrator")
+
 app = Flask(__name__)
-# Enable CORS for the app.
 CORS(app)
 
-# Define a GET endpoint.
-@app.route('/', methods=['GET'])
-def index():
-    """
-    Responds with 'Hello, [name]' when a GET request is made to '/' endpoint.
-    """
-    # Test the fraud-detection gRPC service.
-    response = greet(name='orchestrator')
-    # Return the response.
-    return response
+
+from pymongo import MongoClient
+MONGO_URI = os.getenv('MONGO_URI', 'mongodb://admin:password@mongo:27017/bookstore')
+client = MongoClient(MONGO_URI)
+db = client['bookstore']
+
+
+# TODO: these functions should be outside
+@app.route('/api/books', methods=['GET'])
+def get_books():
+    books_cursor = db.books.find({})
+    books = list(books_cursor)
+    print(books)
+    for book in books:
+        book['_id'] = str(book['_id'])
+
+    if books:
+        return jsonify(books)
+    else:
+        return jsonify({"error": "Books not found"}), 404
+
+
+@app.route('/api/books/<bookId>', methods=['GET'])
+def get_book(bookId):
+    book = db.books.find_one({"id": bookId}, {'_id': 0})
+    if book:
+        return jsonify(book)
+    else:
+        return jsonify({"error": "Book not found"}), 404
+    
+
+
+
+def call_fraud_detection_service(order_details):
+    with grpc.insecure_channel('fraud_detection:50051') as channel:
+        stub = fraud_detection_pb2_grpc.FraudDetectionServiceStub(channel)
+        order_json = json.dumps(order_details)
+        
+        # TODO: need more secure ways for validating fraud
+        request = fraud_detection_pb2.FraudCheckRequest(order_json=order_json)
+        response = stub.CheckFraud(request)
+        logger.info(f"is_fraudulent: {response.is_fraudulent}")
+
+    return response.is_fraudulent
+
+
+def call_transaction_verification_service(order_details):
+    with grpc.insecure_channel('transaction_verification:50052') as channel:
+        stub = transaction_verification_pb2_grpc.TransactionVerificationServiceStub(channel)
+        order_json = json.dumps(order_details)
+
+        request = transaction_verification_pb2.TransactionVerificationRequest(order_json=order_json)
+        response = stub.VerifyTransaction(request)
+        logger.info(f"is_valid: {response.is_valid}")
+
+    return response.is_valid
+
+
+def call_suggestions_service(order_details):
+    with grpc.insecure_channel('suggestions:50053') as channel:
+        stub = suggestions_pb2_grpc.SuggestionsServiceStub(channel)
+        order_json = json.dumps(order_details)
+
+        request = suggestions_pb2.SuggestionsRequest(order_json=order_json)
+        response = stub.GetSuggestions(request)
+        
+        suggested_books = [
+            {
+                'bookId': book.id, 
+                'title': book.title, 
+                'author': book.author, 
+                'description': book.description, 
+                'copies': book.copies, 
+                'copiesAvailable': book.copiesAvailable, 
+                'category': book.category, 
+                'img': book.img, 
+                'price': book.price
+            } for book in response.suggestions]
+    
+    logger.info(f"suggested_books: {suggested_books}")
+
+    return suggested_books
+
+
+def assign_order_id(order_details):
+    order_details["orderId"] = str(uuid.uuid4())
+
+
+def process_order(order_details):
+    results = {}
+
+    def fraud_detection_wrapper():
+        logger.info(f"Starting proceess fraud_detection_service...")
+        results["is_fraudulent"] = call_fraud_detection_service(order_details)
+
+    def transaction_verification_wrapper():
+        logger.info(f"Starting proceess transaction_verification_service...")
+        results["is_valid"] = call_transaction_verification_service(order_details)
+
+    def suggestions_wrapper():
+        logger.info(f"Starting proceess suggestions_service...")
+        results["suggested_books"] = call_suggestions_service(order_details)
+
+    threads = [
+        threading.Thread(target=fraud_detection_wrapper),
+        threading.Thread(target=transaction_verification_wrapper),
+        threading.Thread(target=suggestions_wrapper)
+    ]
+
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+
+    return results
+
+
 
 @app.route('/checkout', methods=['POST'])
 def checkout():
-    """
-    Responds with a JSON object containing the order ID, status, and suggested books.
-    """
-    # Print request object data
-    print("Request Data:", request.json)
+    order_details = request.json
+    print(order_details)
+    
+    if not order_details:
+        return jsonify({'error': 'Invalid request'}), 400
 
-    # Dummy response following the provided YAML specification for the bookstore
-    order_status_response = {
-        'orderId': '12345',
+    results = process_order(order_details)
+
+    # might merge the responses.
+    if results["is_fraudulent"]:
+        return jsonify({
+            'orderId': order_details.get('orderId', 'Unknown'), 
+            'status': 'Order Rejected', 
+            'suggestedBooks': []
+        }), 200
+    
+    if not results["is_valid"]:
+        return jsonify({
+            'orderId': order_details.get('orderId', 'Unknown'), 
+            'status': 'Order Rejected', 
+            'suggestedBooks': []
+        }), 200
+    
+    assign_order_id(order_details)
+
+    return jsonify({
+        'orderId': order_details.get('orderId', 'Unknown'),
         'status': 'Order Approved',
-        'suggestedBooks': [
-            {'bookId': '123', 'title': 'Dummy Book 1', 'author': 'Author 1'},
-            {'bookId': '456', 'title': 'Dummy Book 2', 'author': 'Author 2'}
-        ]
-    }
+        'suggestedBooks': results["suggested_books"]
+    }), 200
 
-    return order_status_response
 
 
 if __name__ == '__main__':

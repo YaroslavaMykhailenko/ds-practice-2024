@@ -3,7 +3,9 @@ import debounce from 'lodash.debounce';
 import {Pagination} from '../Utils/Pagination';
 import {SpinnerLoading} from '../Utils/SpinnerLoading';
 import {SearchBook} from './components/SearchBook';
-import {responseData} from "../../Api";
+// import {responseData} from "../../Api";
+import axios from 'axios';
+
 import {Link} from "react-router-dom";
 
 type BookData = {
@@ -33,23 +35,33 @@ export const SearchBooksPage = () => {
     const [search, setSearch] = useState('');
     const [searchResults, setSearchResults] = useState<BookData[]>([]);
 
-    const fetchBooksData = async (): Promise<ResponseData> => {
-        return new Promise((resolve) => {
-            setTimeout(() => {
-                resolve(responseData);
-            }, 1000);
-        });
+    // const fetchBooksData = async (): Promise<ResponseData> => {
+    //     return new Promise((resolve) => {
+    //         setTimeout(() => {
+    //             resolve(responseData);
+    //         }, 1000);
+    //     });
+    // };
+
+    // fetching the books data from mongo db
+    const fetchBooksData = async () => {
+        try {
+            const response = await axios.get('http://0.0.0.0:8081/api/books');
+            console.log(response.data);
+            return response.data;
+        } catch (error) {
+            console.error('Fetch Books Error:', error);
+            throw error;
+        }
     };
-
-
+    
     useEffect(() => {
         const fetchBooks = async () => {
             setIsLoading(true);
             try {
-                const responseData = await fetchBooksData();
-                const loadedBooks = Object.values(responseData)
+                const loadedBooks = await fetchBooksData();
                 setBooks(loadedBooks);
-                setSearchResults(loadedBooks); // Set initial search results
+                setSearchResults(loadedBooks);
                 updatePagination(loadedBooks.length);
             } catch (error) {
                 console.error('Fetch Books Error:', error);
@@ -59,7 +71,8 @@ export const SearchBooksPage = () => {
             }
         };
         fetchBooks();
-    },[]);
+    }, []);
+    
 
     const handleSearch = useCallback((searchValue: string) => {
         const filteredResults = books.filter(item =>

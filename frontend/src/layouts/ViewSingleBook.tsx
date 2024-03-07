@@ -1,6 +1,7 @@
 import React, { useEffect, useState} from 'react';
 import {Link, useParams, useNavigate} from 'react-router-dom';
-import { responseData } from "../Api";
+// import { responseData } from "../Api";
+import axios from 'axios';
 
 type BookData = {
     id: string;
@@ -31,38 +32,56 @@ const ViewSingleBook: React.FC = () => {
 
     const totalAmount = book ? book.price * quantityAdjustment : 0;
 
-    const fetchBooksData = async (): Promise<BookData | null> => {
-        return new Promise((resolve) => {
-            setTimeout(() => {
-                const bookData = Object.values(responseData).find(book => book.id === bookId);
-                resolve(bookData ?? null); // Return null if no book is found
-            }, 1000);
-        });
+    // const fetchBooksData = async (): Promise<BookData | null> => {
+    //     return new Promise((resolve) => {
+    //         setTimeout(() => {
+    //             const bookData = Object.values(responseData).find(book => book.id === bookId);
+    //             resolve(bookData ?? null); // Return null if no book is found
+    //         }, 1000);
+    //     });
+    // };
+
+    const fetchBookData = async () => {
+        setIsLoading(true);
+        try {
+            const response = await axios.get(`http://0.0.0.0:8081/api/books/${bookId}`);
+            setBook(response.data);
+            setIsLoading(false);
+        } catch (error) {
+            console.error("Fetching book data failed:", error);
+            setHttpError('An error occurred while fetching book details.');
+            setIsLoading(false);
+        }
     };
 
+    // by book id
     const handleCheckout = () => {
         navigate(`/checkout/${book?.id}`, { state: { ...book, totalAmount } });
     };
 
+    // useEffect(() => {
+    //     const fetchBook = async () => {
+    //         setIsLoading(true);
+    //         try {
+    //             const fetchedBook = await fetchBooksData();
+    //             setBook(fetchedBook);
+    //         } catch (error) {
+    //             console.log(error);
+    //             setHttpError('An error occurred while fetching data');
+    //         } finally {
+    //             setIsLoading(false);
+    //         }
+    //     };
 
+    //     fetchBook();
+    //     window.scrollTo(0, 0);
+    // },[bookId]);
 
     useEffect(() => {
-        const fetchBook = async () => {
-            setIsLoading(true);
-            try {
-                const fetchedBook = await fetchBooksData();
-                setBook(fetchedBook);
-            } catch (error) {
-                console.log(error);
-                setHttpError('An error occurred while fetching data');
-            } finally {
-                setIsLoading(false);
-            }
-        };
-
-        fetchBook();
+        fetchBookData();
         window.scrollTo(0, 0);
-    },[bookId]);
+    }, [bookId]);
+
 
     if (isLoading) {
         return (

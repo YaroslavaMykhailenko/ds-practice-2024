@@ -1,8 +1,13 @@
 # Use an official Python runtime as the base image
-FROM python:3.11
+# FROM python:3.10
+FROM --platform=linux/amd64 python:3.10-slim
 
 # Set the working directory in the container
 # Both the utils and src folders will be mounted as volumes, please see docker-compose.yaml
+WORKDIR /app
+
+COPY . .
+RUN cd utils/pb && pip install .
 WORKDIR /app
 
 # Copy the requirements file to the working directory
@@ -16,3 +21,4 @@ RUN pip install reloadium
 
 # Set the command to run the application
 CMD reloadium run "fraud_detection/src/app.py"
+# CMD ["python", "fraud_detection/src/app.py"]
