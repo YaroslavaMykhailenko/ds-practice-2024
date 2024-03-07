@@ -3,7 +3,7 @@ import debounce from 'lodash.debounce';
 import {Pagination} from '../Utils/Pagination';
 import {SpinnerLoading} from '../Utils/SpinnerLoading';
 import {SearchBook} from './components/SearchBook';
-import {responseData} from "../../Api";
+// import {responseData} from "../../Api";
 import axios from 'axios';
 
 import {Link} from "react-router-dom";
@@ -56,10 +56,8 @@ export const SearchBooksPage = () => {
     };
     
     useEffect(() => {
-        console.log("a");
         const fetchBooks = async () => {
             setIsLoading(true);
-            console.log("a");
             try {
                 const loadedBooks = await fetchBooksData();
                 setBooks(loadedBooks);

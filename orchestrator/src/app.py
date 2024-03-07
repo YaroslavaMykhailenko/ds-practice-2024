@@ -8,6 +8,7 @@ from flask_cors import CORS
 import json
 import os
 import threading
+import uuid
 
 from tools.logging import setup_logger
 logger = setup_logger("orchestrator")
@@ -27,6 +28,7 @@ db = client['bookstore']
 def get_books():
     books_cursor = db.books.find({})
     books = list(books_cursor)
+    print(books)
     for book in books:
         book['_id'] = str(book['_id'])
 
@@ -98,6 +100,10 @@ def call_suggestions_service(order_details):
     return suggested_books
 
 
+def assign_order_id(order_details):
+    order_details["orderId"] = str(uuid.uuid4())
+
+
 def process_order(order_details):
     results = {}
 
@@ -131,12 +137,12 @@ def process_order(order_details):
 @app.route('/checkout', methods=['POST'])
 def checkout():
     order_details = request.json
+    print(order_details)
     
     if not order_details:
         return jsonify({'error': 'Invalid request'}), 400
 
     results = process_order(order_details)
-
 
     # might merge the responses.
     if results["is_fraudulent"]:
@@ -152,7 +158,8 @@ def checkout():
             'status': 'Order Rejected', 
             'suggestedBooks': []
         }), 200
-
+    
+    assign_order_id(order_details)
 
     return jsonify({
         'orderId': order_details.get('orderId', 'Unknown'),
