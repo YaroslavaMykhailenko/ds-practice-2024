@@ -86,6 +86,21 @@ services:
       - ./utils:/app/utils
       - ./suggestions/src:/app/suggestions/src
 
+  book_suggestion_model:
+    platform: linux/arm64
+    build:
+      context: ./
+      dockerfile: ./book_suggestion_model/Dockerfile
+    ports:
+      - 50054:50054
+    environment:
+      - PYTHONUNBUFFERED=TRUE
+      - PYTHONFILE=/app/book_suggestion_model/src/app.py
+      - MONGO_URI=mongodb://admin:password@mongodb:27017/bookstore
+    volumes:
+      - ./utils:/app/utils
+      - ./book_suggestion_model/src:/app/book_suggestion_model/src
+
 
   # https://gist.github.com/gbzarelli/c15b607d62fc98ae436564bf8129ea8e
   mongodb:
@@ -101,6 +116,19 @@ services:
       - ./mongodb/init_scripts/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
     ports:
       - "27017:27017"
+
+  # mongodb_users:
+  #   container_name: mongodb_users
+  #   image: mongo:latest
+  #   restart: always
+  #   environment:
+  #     MONGO_INITDB_DATABASE: users
+  #     MONGO_INITDB_ROOT_USERNAME: admin
+  #     MONGO_INITDB_ROOT_PASSWORD: password
+  #   volumes:
+  #     - mongodb_users_data:/data/db
+  #   ports:
+  #     - "27018:27017"
 
   # mongo-express:
   #   image: mongo-express
@@ -119,3 +147,4 @@ services:
 
 volumes:
   mongodb_data:
+  mongodb_users_data:

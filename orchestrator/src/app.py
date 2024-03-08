@@ -137,7 +137,7 @@ def process_order(order_details):
 @app.route('/checkout', methods=['POST'])
 def checkout():
     order_details = request.json
-    print(order_details)
+    # print(order_details)
     
     if not order_details:
         return jsonify({'error': 'Invalid request'}), 400

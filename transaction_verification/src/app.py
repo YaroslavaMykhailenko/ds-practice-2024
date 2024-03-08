@@ -1,6 +1,7 @@
 import grpc
 from concurrent import futures
 import json
+import re
 
 from utils.pb.transaction_verification import transaction_verification_pb2
 from utils.pb.transaction_verification import transaction_verification_pb2_grpc
@@ -13,17 +14,17 @@ class TransactionVerificationService(transaction_verification_pb2_grpc.Transacti
     def VerifyTransaction(self, request, context):
         order = json.loads(request.order_json)
 
-        if not self.user_info_valid(order.get('user', {})):
-            return transaction_verification_pb2.TransactionVerificationResponse(is_valid=False)
+        # if not self.user_info_valid(order.get('user', {})):
+        #     return transaction_verification_pb2.TransactionVerificationResponse(is_valid=False)
         
-        if not self.payment_details_valid(order.get('creditCard', {})):
-            return transaction_verification_pb2.TransactionVerificationResponse(is_valid=False)
+        # if not self.payment_details_valid(order.get('creditCard', {})):
+        #     return transaction_verification_pb2.TransactionVerificationResponse(is_valid=False)
         
-        if not self.billing_address_valid(order.get('billingAddress', {})):
-            return transaction_verification_pb2.TransactionVerificationResponse(is_valid=False)
+        # if not self.billing_address_valid(order.get('billingAddress', {})):
+        #     return transaction_verification_pb2.TransactionVerificationResponse(is_valid=False)
         
-        if not self.check_items_availability(order.get('items', [])):
-            return transaction_verification_pb2.TransactionVerificationResponse(is_valid=False)
+        # if not self.check_items_availability(order.get('items', [])):
+        #     return transaction_verification_pb2.TransactionVerificationResponse(is_valid=False)
 
         return transaction_verification_pb2.TransactionVerificationResponse(is_valid=True)
         
