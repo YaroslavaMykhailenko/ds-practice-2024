@@ -15,8 +15,8 @@ class FraudDetectionService(fraud_detection_pb2_grpc.FraudDetectionServiceServic
     def CheckFraud(self, request, context):
         order = json.loads(request.order_json)
 
-        # if self.check_credit_card_expiration(order['creditCard']['expirationDate']):
-        #     return fraud_detection_pb2.FraudCheckResponse(is_fraudulent=True)
+        if self.check_credit_card_expiration(order['creditCard']['expirationDate']):
+            return fraud_detection_pb2.FraudCheckResponse(is_fraudulent=True)
         return fraud_detection_pb2.FraudCheckResponse(is_fraudulent=False)
     
     def check_credit_card_expiration(self, expire_date):
