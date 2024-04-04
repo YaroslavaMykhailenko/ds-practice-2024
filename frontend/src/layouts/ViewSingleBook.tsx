@@ -44,7 +44,7 @@ const ViewSingleBook: React.FC = () => {
     const fetchBookData = async () => {
         setIsLoading(true);
         try {
-            const response = await axios.get(`http://0.0.0.0:8081/api/books/${bookId}`);
+            const response = await axios.get(`http://localhost:8081/api/books/${bookId}`);
             setBook(response.data);
             setIsLoading(false);
         } catch (error) {

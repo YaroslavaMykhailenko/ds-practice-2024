@@ -8,8 +8,10 @@ service FraudDetectionService {
 
 message FraudCheckRequest {
   string order_json = 1;
+  string vector_clock_json = 2;
 }
 
 message FraudCheckResponse {
-  bool is_fraudulent = 1;
+  string response_json = 1;
+  string vector_clock_json = 2;
 }

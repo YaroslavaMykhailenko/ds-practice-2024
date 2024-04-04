@@ -11,6 +11,8 @@ from utils.pb.book_suggestion_model import book_suggestion_model_pb2_grpc
 
 
 from tools.logging import setup_logger
+from tools.vectorclock.VectorClock import VectorClock
+
 logger = setup_logger("book_suggestion_model")
 
 
@@ -49,10 +51,27 @@ class BookSuggestionModel:
 model = BookSuggestionModel()
 
 
-
 class BookSuggestionModelService(book_suggestion_model_pb2_grpc.BookSuggestionModelServiceServicer):
     def GetBookRecommendations(self, request, context):
         order = json.loads(request.order_json)
+        global_clock_dict = json.loads(request.vector_clock_json)
+        global_clock = VectorClock(global_clock_dict)
+
+        local_clock = VectorClock()
+        local_clock.initialize(list(global_clock.get_clock().keys()))
+
+        # TODO: logic for checking the global state of a vector clock
+        if not self.CheckGlobalClock(global_clock):
+            logger.info(f"Invalid sequence of operations")
+            # Here is question what better to return 
+            return book_suggestion_model_pb2.BookRecommendations(books=[], vector_clock_json=json.dumps(global_clock.get_clock()))
+        
+        local_clock.increment("book_suggestion_model")
+        print(f"LOCAL VECTOR CLOCK IN BOOK SUGGESTION MODEL: {local_clock.get_clock()}")
+
+        global_clock.merge(local_clock.get_clock())
+
+        print(f"GLOBAL VECTOR CLOCK IN BOOK SUGGESTION MODEL: {global_clock.get_clock()}")
 
         # get the ordered book title.
         book_title = order.get("items", [{}])[0].get("title", "")
@@ -72,8 +91,11 @@ class BookSuggestionModelService(book_suggestion_model_pb2_grpc.BookSuggestionMo
             ) for book in similar_books
         ]
 
-        return book_suggestion_model_pb2.BookRecommendations(books=books)
+        return book_suggestion_model_pb2.BookRecommendations(books=books, vector_clock_json=json.dumps(global_clock.get_clock()))
     
+    def CheckGlobalClock(self, global_clock):
+        # ....
+        return True
 
 def serve():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))

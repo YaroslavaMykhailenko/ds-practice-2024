@@ -8,10 +8,12 @@ service SuggestionsService {
 
 message SuggestionsRequest {
   string order_json = 1;
+  string vector_clock_json = 2;
 }
 
 message SuggestionsResponse {
   repeated Book suggestions = 1;
+  string vector_clock_json = 2;
 }
 
 message Book {

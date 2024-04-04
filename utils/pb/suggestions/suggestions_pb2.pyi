@@ -6,16 +6,20 @@ from typing import ClassVar as _ClassVar, Iterable as _Iterable, Mapping as _Map
 DESCRIPTOR: _descriptor.FileDescriptor
 
 class SuggestionsRequest(_message.Message):
-    __slots__ = ("order_json",)
+    __slots__ = ("order_json", "vector_clock_json")
     ORDER_JSON_FIELD_NUMBER: _ClassVar[int]
+    VECTOR_CLOCK_JSON_FIELD_NUMBER: _ClassVar[int]
     order_json: str
-    def __init__(self, order_json: _Optional[str] = ...) -> None: ...
+    vector_clock_json: str
+    def __init__(self, order_json: _Optional[str] = ..., vector_clock_json: _Optional[str] = ...) -> None: ...
 
 class SuggestionsResponse(_message.Message):
-    __slots__ = ("suggestions",)
+    __slots__ = ("suggestions", "vector_clock_json")
     SUGGESTIONS_FIELD_NUMBER: _ClassVar[int]
+    VECTOR_CLOCK_JSON_FIELD_NUMBER: _ClassVar[int]
     suggestions: _containers.RepeatedCompositeFieldContainer[Book]
-    def __init__(self, suggestions: _Optional[_Iterable[_Union[Book, _Mapping]]] = ...) -> None: ...
+    vector_clock_json: str
+    def __init__(self, suggestions: _Optional[_Iterable[_Union[Book, _Mapping]]] = ..., vector_clock_json: _Optional[str] = ...) -> None: ...
 
 class Book(_message.Message):
     __slots__ = ("id", "title", "author", "description", "copies", "copiesAvailable", "category", "img", "price")

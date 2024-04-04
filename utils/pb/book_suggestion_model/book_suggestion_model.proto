@@ -8,6 +8,7 @@ service BookSuggestionModelService {
 
 message RecommendationsRequest {
   string order_json = 1;
+  string vector_clock_json = 2;
 }
 
 message Book {
@@ -24,4 +25,5 @@ message Book {
 
 message BookRecommendations {
   repeated Book books = 1;
+  string vector_clock_json = 2;
 }

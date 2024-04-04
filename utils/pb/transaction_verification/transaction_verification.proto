@@ -8,8 +8,10 @@ service TransactionVerificationService {
 
 message TransactionVerificationRequest {
   string order_json = 1;
+  string vector_clock_json = 2;
 }
 
 message TransactionVerificationResponse {
-  bool is_valid = 1;
+  string response_json = 1;
+  string vector_clock_json = 2;
 }

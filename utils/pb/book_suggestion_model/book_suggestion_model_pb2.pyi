@@ -6,10 +6,12 @@ from typing import ClassVar as _ClassVar, Iterable as _Iterable, Mapping as _Map
 DESCRIPTOR: _descriptor.FileDescriptor
 
 class RecommendationsRequest(_message.Message):
-    __slots__ = ("order_json",)
+    __slots__ = ("order_json", "vector_clock_json")
     ORDER_JSON_FIELD_NUMBER: _ClassVar[int]
+    VECTOR_CLOCK_JSON_FIELD_NUMBER: _ClassVar[int]
     order_json: str
-    def __init__(self, order_json: _Optional[str] = ...) -> None: ...
+    vector_clock_json: str
+    def __init__(self, order_json: _Optional[str] = ..., vector_clock_json: _Optional[str] = ...) -> None: ...
 
 class Book(_message.Message):
     __slots__ = ("id", "title", "author", "description", "copies", "copiesAvailable", "category", "img", "price")
@@ -34,7 +36,9 @@ class Book(_message.Message):
     def __init__(self, id: _Optional[str] = ..., title: _Optional[str] = ..., author: _Optional[str] = ..., description: _Optional[str] = ..., copies: _Optional[int] = ..., copiesAvailable: _Optional[int] = ..., category: _Optional[str] = ..., img: _Optional[str] = ..., price: _Optional[int] = ...) -> None: ...
 
 class BookRecommendations(_message.Message):
-    __slots__ = ("books",)
+    __slots__ = ("books", "vector_clock_json")
     BOOKS_FIELD_NUMBER: _ClassVar[int]
+    VECTOR_CLOCK_JSON_FIELD_NUMBER: _ClassVar[int]
     books: _containers.RepeatedCompositeFieldContainer[Book]
-    def __init__(self, books: _Optional[_Iterable[_Union[Book, _Mapping]]] = ...) -> None: ...
+    vector_clock_json: str
+    def __init__(self, books: _Optional[_Iterable[_Union[Book, _Mapping]]] = ..., vector_clock_json: _Optional[str] = ...) -> None: ...

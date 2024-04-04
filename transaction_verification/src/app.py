@@ -5,29 +5,62 @@ import re
 
 from utils.pb.transaction_verification import transaction_verification_pb2
 from utils.pb.transaction_verification import transaction_verification_pb2_grpc
+from utils.pb.fraud_detection import fraud_detection_pb2
+from utils.pb.fraud_detection import fraud_detection_pb2_grpc
 
 from tools.logging import setup_logger
-logger = setup_logger("transaction_verification")
+from tools.vectorclock.VectorClock import VectorClock
 
+logger = setup_logger("transaction_verification")
 
 class TransactionVerificationService(transaction_verification_pb2_grpc.TransactionVerificationServiceServicer):
     def VerifyTransaction(self, request, context):
         order = json.loads(request.order_json)
+        global_clock_dict = json.loads(request.vector_clock_json)
+        global_clock = VectorClock(global_clock_dict)
 
-        if not self.user_info_valid(order.get('user', {})):
-            return transaction_verification_pb2.TransactionVerificationResponse(is_valid=False)
-        
-        if not self.payment_details_valid(order.get('creditCard', {})):
-            return transaction_verification_pb2.TransactionVerificationResponse(is_valid=False)
-        
-        if not self.billing_address_valid(order.get('billingAddress', {})):
-            return transaction_verification_pb2.TransactionVerificationResponse(is_valid=False)
-        
-        if not self.check_items_availability(order.get('items', [])):
-            return transaction_verification_pb2.TransactionVerificationResponse(is_valid=False)
+        local_clock = VectorClock()
+        local_clock.initialize(list(global_clock.get_clock().keys()))
 
-        return transaction_verification_pb2.TransactionVerificationResponse(is_valid=True)
+        # TODO: logic for checking the global state of a vector clock
+        if not self.CheckGlobalClock(global_clock):
+            print(f"Invalid sequence of operations")
+            response_json = {"orderId": order.get('orderId', 'Unknown'), "status": "Order Rejected", "suggestedBooks": []}
+            return transaction_verification_pb2.TransactionVerificationResponse(response_json=json.dumps(response_json), vector_clock_json=json.dumps(global_clock.get_clock()))
         
+        local_clock.increment("transaction_verification")
+        print(f"LOCAL VECTOR CLOCK IN TRANSACTION VERIFICATION: {local_clock.get_clock()}")
+
+        if not self.user_info_valid(order.get('user', {})) or \
+           not self.payment_details_valid(order.get('creditCard', {})) or \
+           not self.billing_address_valid(order.get('billingAddress', {})) or \
+           not self.check_items_availability(order.get('items', [])):
+           response_json = {"orderId": order.get('orderId', 'Unknown'), "status": "Order Rejected", "suggestedBooks": []}
+           return transaction_verification_pb2.TransactionVerificationResponse(response_json=json.dumps(response_json), vector_clock_json=json.dumps(global_clock.get_clock()))
+        
+
+        global_clock.merge(local_clock.get_clock())
+        print(f"GLOBAL VECTOR CLOCK IN TRANSACTION VERIFICATION: {global_clock.get_clock()}")
+
+        response_json, vector_clock_json = self.call_fraud_detection_service(order, global_clock.get_clock())
+
+        response_json = json.loads(response_json)
+        vector_clock_json = json.loads(vector_clock_json)
+        return transaction_verification_pb2.TransactionVerificationResponse(response_json=json.dumps(response_json), vector_clock_json=json.dumps(vector_clock_json))
+
+    def call_fraud_detection_service(self, order, vector_clock):
+        with grpc.insecure_channel('fraud_detection:50051') as channel:
+            stub = fraud_detection_pb2_grpc.FraudDetectionServiceStub(channel)
+            order_json = json.dumps(order)
+            fraud_request = fraud_detection_pb2.FraudCheckRequest(order_json=order_json, vector_clock_json=json.dumps(vector_clock))
+            response = stub.CheckFraud(fraud_request)
+        return response.response_json, response.vector_clock_json
+
+
+    def CheckGlobalClock(self, global_clock):
+        # ....
+        return True
+    
 
     # Check if the user information is not empty  
     def user_info_valid(self, user):
@@ -99,7 +132,6 @@ def serve():
     server.add_insecure_port('[::]:50052')
     server.start()
     server.wait_for_termination()
-
 
 if __name__ == '__main__':
     serve()
