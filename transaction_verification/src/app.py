@@ -28,17 +28,25 @@ class TransactionVerificationService(transaction_verification_pb2_grpc.Transacti
             response_json = {"orderId": order.get('orderId', 'Unknown'), "status": "Order Rejected", "suggestedBooks": []}
             return transaction_verification_pb2.TransactionVerificationResponse(response_json=json.dumps(response_json), vector_clock_json=json.dumps(global_clock.get_clock()))
         
-        local_clock.increment("transaction_verification")
+        if not self.VerifyItemsAvailability(order, local_clock):
+            global_clock.merge(local_clock.get_clock())
+            response_json = {"orderId": order.get('orderId', 'Unknown'), "status": "Order Rejected", "suggestedBooks": []}
+            return transaction_verification_pb2.TransactionVerificationResponse(response_json=json.dumps(response_json), vector_clock_json=json.dumps(global_clock.get_clock()))
+        
+        if not self.VerifyUserInfoAndPaymentDetails(order, local_clock):
+            global_clock.merge(local_clock.get_clock())
+            response_json = {"orderId": order.get('orderId', 'Unknown'), "status": "Order Rejected", "suggestedBooks": []}
+            return transaction_verification_pb2.TransactionVerificationResponse(response_json=json.dumps(response_json), vector_clock_json=json.dumps(global_clock.get_clock()))
+        
         print(f"LOCAL VECTOR CLOCK IN TRANSACTION VERIFICATION: {local_clock.get_clock()}")
 
-        if not self.user_info_valid(order.get('user', {})) or \
-           not self.payment_details_valid(order.get('creditCard', {})) or \
-           not self.billing_address_valid(order.get('billingAddress', {})) or \
-           not self.check_items_availability(order.get('items', [])):
-           response_json = {"orderId": order.get('orderId', 'Unknown'), "status": "Order Rejected", "suggestedBooks": []}
-           return transaction_verification_pb2.TransactionVerificationResponse(response_json=json.dumps(response_json), vector_clock_json=json.dumps(global_clock.get_clock()))
+        # if not self.user_info_valid(order.get('user', {})) or \
+        #    not self.payment_details_valid(order.get('creditCard', {})) or \
+        #    not self.billing_address_valid(order.get('billingAddress', {})) or \
+        #    not self.check_items_availability(order.get('items', [])):
+        #    response_json = {"orderId": order.get('orderId', 'Unknown'), "status": "Order Rejected", "suggestedBooks": []}
+        #    return transaction_verification_pb2.TransactionVerificationResponse(response_json=json.dumps(response_json), vector_clock_json=json.dumps(global_clock.get_clock()))
         
-
         global_clock.merge(local_clock.get_clock())
         print(f"GLOBAL VECTOR CLOCK IN TRANSACTION VERIFICATION: {global_clock.get_clock()}")
 
@@ -56,15 +64,33 @@ class TransactionVerificationService(transaction_verification_pb2_grpc.Transacti
             response = stub.CheckFraud(fraud_request)
         return response.response_json, response.vector_clock_json
 
+    def VerifyItemsAvailability(self, order, vector_clock):
+        vector_clock.increment("transaction_verification")
+        if not self.check_items_availability(order.get('items', [])):
+            return False
+        
+        return True
+    
+    def VerifyUserInfoAndPaymentDetails(self, order, vector_clock):
+        vector_clock.increment("transaction_verification")
+
+        if not self.user_info_valid(order.get('user', {})):
+            return False
+
+        if not self.payment_details_valid(order.get('creditCard', {})):
+            return False
+
+        if not self.billing_address_valid(order.get('billingAddress', {})):
+            return False
+        return True
 
     def CheckGlobalClock(self, global_clock):
         # ....
         return True
     
 
-    # Check if the user information is not empty  
+    # Check if the user information is not empty      
     def user_info_valid(self, user):
-
         name = user.get('name')
         contact = user.get('contact')
         
