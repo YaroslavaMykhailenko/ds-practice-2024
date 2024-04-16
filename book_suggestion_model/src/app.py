@@ -37,7 +37,6 @@ class BookSuggestionModel:
         title_vec = self.vectorizer.transform([title])
         cosine_similarities = cosine_similarity(title_vec, self.tfidf_matrix)
         similar_indices = cosine_similarities[0].argsort()[::-1][1:topk+1]
-        print(similar_indices, cosine_similarities[0].argsort())
         
         # logging.
         ranks = {self.titles[i]: np.round(cosine_similarities[0][i], 3) 

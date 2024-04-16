@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package order_queue;
+
+message Order {
+  string id = 1;
+  string order_json = 2;
+  int32 priority = 3;
+}
+
+message EnqueueResponse {
+  bool success = 1;
+}
+
+message DequeueRequest {}
+
+service OrderQueueService {
+  rpc Enqueue(Order) returns (EnqueueResponse) {}
+  rpc Dequeue(DequeueRequest) returns (Order) {}
+}

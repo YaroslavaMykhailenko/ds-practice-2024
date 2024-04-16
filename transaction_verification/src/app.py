@@ -70,6 +70,7 @@ class TransactionVerificationService(transaction_verification_pb2_grpc.Transacti
                 return False
         return True
     
+    
     def check_items_availability(self, items):
         return isinstance(items, list) and len(items) > 0
 
@@ -103,3 +104,6 @@ def serve():
 
 if __name__ == '__main__':
     serve()
+
+
+
