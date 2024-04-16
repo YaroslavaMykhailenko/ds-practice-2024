@@ -9,9 +9,11 @@ class ProcessOrderRequest(_message.Message):
     def __init__(self) -> None: ...
 
 class ProcessOrderResponse(_message.Message):
-    __slots__ = ("success", "message")
+    __slots__ = ("success", "order_json", "order_result")
     SUCCESS_FIELD_NUMBER: _ClassVar[int]
-    MESSAGE_FIELD_NUMBER: _ClassVar[int]
+    ORDER_JSON_FIELD_NUMBER: _ClassVar[int]
+    ORDER_RESULT_FIELD_NUMBER: _ClassVar[int]
     success: bool
-    message: str
-    def __init__(self, success: bool = ..., message: _Optional[str] = ...) -> None: ...
+    order_json: str
+    order_result: str
+    def __init__(self, success: bool = ..., order_json: _Optional[str] = ..., order_result: _Optional[str] = ...) -> None: ...

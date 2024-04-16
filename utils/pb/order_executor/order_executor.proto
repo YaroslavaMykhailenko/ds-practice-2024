@@ -10,5 +10,6 @@ message ProcessOrderRequest {}
 
 message ProcessOrderResponse {
   bool success = 1;
-  string message = 2;
+  string order_json = 2;
+  string order_result = 3;
 }

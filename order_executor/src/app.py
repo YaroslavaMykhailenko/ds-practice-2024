@@ -21,6 +21,65 @@ ELECTION_TIMEOUT = 2
 
 print(SERVICE_ID)
 
+from tools.logging import setup_logger
+logger = setup_logger("order_executor")
+
+
+# TEMP
+from utils.pb.fraud_detection import fraud_detection_pb2, fraud_detection_pb2_grpc
+from utils.pb.transaction_verification import transaction_verification_pb2, transaction_verification_pb2_grpc
+from utils.pb.suggestions import suggestions_pb2, suggestions_pb2_grpc
+def call_fraud_detection_service(order_details):
+    with grpc.insecure_channel('fraud_detection:50051') as channel:
+        stub = fraud_detection_pb2_grpc.FraudDetectionServiceStub(channel)
+        order_json = json.dumps(order_details)
+        
+        # TODO: need more secure ways for validating fraud
+        request = fraud_detection_pb2.FraudCheckRequest(order_json=order_json)
+        response = stub.CheckFraud(request)
+        logger.info(f"is_fraudulent: {response.is_fraudulent}")
+
+    return response.is_fraudulent
+
+
+def call_transaction_verification_service(order_details):
+    with grpc.insecure_channel('transaction_verification:50052') as channel:
+        stub = transaction_verification_pb2_grpc.TransactionVerificationServiceStub(channel)
+        order_json = json.dumps(order_details)
+
+        request = transaction_verification_pb2.TransactionVerificationRequest(order_json=order_json)
+        response = stub.VerifyTransaction(request)
+        logger.info(f"is_valid: {response.is_valid}")
+
+    return response.is_valid
+
+
+def call_suggestions_service(order_details):
+    with grpc.insecure_channel('suggestions:50053') as channel:
+        stub = suggestions_pb2_grpc.SuggestionsServiceStub(channel)
+        order_json = json.dumps(order_details)
+
+        request = suggestions_pb2.SuggestionsRequest(order_json=order_json)
+        response = stub.GetSuggestions(request)
+        
+        suggested_books = [
+            {
+                'bookId': book.id, 
+                'title': book.title, 
+                'author': book.author, 
+                'description': book.description, 
+                'copies': book.copies, 
+                'copiesAvailable': book.copiesAvailable, 
+                'category': book.category, 
+                'img': book.img, 
+                'price': book.price
+            } for book in response.suggestions]
+    
+    logger.info(f"suggested_books: {suggested_books}")
+
+    return suggested_books
+# TEMP
+
 
 def get_available_services(redis_client):
     services = json.loads(redis_client.get(INSTANCE_INFO_KEY) or "{}")
@@ -152,16 +211,55 @@ class OrderExecutor(order_executor_pb2_grpc.OrderExecutorServiceServicer):
             with grpc.insecure_channel(ORDER_QUEUE_SERVICE) as channel:
                 stub = order_queue_pb2_grpc.OrderQueueServiceStub(channel)
                 order = stub.Dequeue(order_queue_pb2.DequeueRequest())
+                
                 if order.id:
-                    print(f"Leader {self.service_id} processed order {order.id}: {order.order_json}")
-                    return order_executor_pb2.ProcessOrderResponse(success=True, message="Order processed by leader")
+                    order_results = self._ProcessOrder(order)
+                    order_results = json.dumps(order_results)
+
+                    return order_executor_pb2.ProcessOrderResponse(success=True, order_json=order.order_json, order_result=order_results)
                 else:
-                    return order_executor_pb2.ProcessOrderResponse(success=False, message="No orders to process")
+                    return order_executor_pb2.ProcessOrderResponse(success=False, order_json=order.order_json, order_result=order_results)
+        
         elif leader_address:
             print(f"Rerouting order to the leader at {leader_address}")
             return self.reroute_to_leader(leader_address, request)
         else:
-            return order_executor_pb2.ProcessOrderResponse(success=False, message="Leader not found or election failed")
+            return order_executor_pb2.ProcessOrderResponse(success=False, order_json={}, order_result={})
+        
+    
+    def _ProcessOrder(self, order):
+        print(f"Leader {self.service_id} processed order {order.id}: {order.order_json}")
+        
+        order_details = json.loads(order.order_json)
+
+        results = {}
+
+        def fraud_detection_wrapper():
+            logger.info(f"Starting proceess fraud_detection_service...")
+            results["is_fraudulent"] = call_fraud_detection_service(order_details)
+
+        def transaction_verification_wrapper():
+            logger.info(f"Starting proceess transaction_verification_service...")
+            results["is_valid"] = call_transaction_verification_service(order_details)
+
+        def suggestions_wrapper():
+            logger.info(f"Starting proceess suggestions_service...")
+            results["suggested_books"] = call_suggestions_service(order_details)
+            
+
+        threads = [
+            threading.Thread(target=fraud_detection_wrapper),
+            threading.Thread(target=transaction_verification_wrapper),
+            threading.Thread(target=suggestions_wrapper)
+        ]
+
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+
+        return results
+
 
 
 def serve():

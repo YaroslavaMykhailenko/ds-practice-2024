@@ -14,7 +14,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n,utils/pb/order_executor/order_executor.proto\x12\rorderexecutor\"\x15\n\x13ProcessOrderRequest\"8\n\x14ProcessOrderResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x0f\n\x07message\x18\x02 \x01(\t2q\n\x14OrderExecutorService\x12Y\n\x0cProcessOrder\x12\".orderexecutor.ProcessOrderRequest\x1a#.orderexecutor.ProcessOrderResponse\"\x00\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n,utils/pb/order_executor/order_executor.proto\x12\rorderexecutor\"\x15\n\x13ProcessOrderRequest\"Q\n\x14ProcessOrderResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x12\n\norder_json\x18\x02 \x01(\t\x12\x14\n\x0corder_result\x18\x03 \x01(\t2q\n\x14OrderExecutorService\x12Y\n\x0cProcessOrder\x12\".orderexecutor.ProcessOrderRequest\x1a#.orderexecutor.ProcessOrderResponse\"\x00\x62\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -24,7 +24,7 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   _globals['_PROCESSORDERREQUEST']._serialized_start=63
   _globals['_PROCESSORDERREQUEST']._serialized_end=84
   _globals['_PROCESSORDERRESPONSE']._serialized_start=86
-  _globals['_PROCESSORDERRESPONSE']._serialized_end=142
-  _globals['_ORDEREXECUTORSERVICE']._serialized_start=144
-  _globals['_ORDEREXECUTORSERVICE']._serialized_end=257
+  _globals['_PROCESSORDERRESPONSE']._serialized_end=167
+  _globals['_ORDEREXECUTORSERVICE']._serialized_start=169
+  _globals['_ORDEREXECUTORSERVICE']._serialized_end=282
 # @@protoc_insertion_point(module_scope)

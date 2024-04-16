@@ -34,7 +34,7 @@ class OrderQueueService(order_queue_pb2_grpc.OrderQueueServiceServicer):
         if self.order_queue.empty():
             return order_queue_pb2.Order()
         
-        _, order_id, order_json = self.order_queue.get()  # Adjusted to unpack three values
+        _, order_id, order_json = self.order_queue.get()
         return order_queue_pb2.Order(id=order_id, order_json=order_json, priority=0)
 
 def serve():
