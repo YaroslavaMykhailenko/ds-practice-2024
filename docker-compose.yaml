@@ -136,42 +136,6 @@ services:
       - ./utils:/app/utils
       - ./order_executor/src:/app/order_executor/src
 
-  # order_executor_2:
-  #   platform: linux/arm64
-  #   build:
-  #     context: ./
-  #     dockerfile: ./order_executor/Dockerfile
-  #   ports:
-  #     - "50057:50056"
-  #   environment:
-  #     - PYTHONUNBUFFERED=TRUE
-  #     - PYTHONFILE=/app/order_executor/src/app.py
-  #     - MONGO_URI=mongodb://admin:password@mongodb:27017/bookstore
-  #     - REDIS_HOST=redis
-  #     - REDIS_PORT=6379
-  #     - SERVICE_ID=order_executor_2
-  #   volumes:
-  #     - ./utils:/app/utils
-  #     - ./order_executor/src:/app/order_executor/src
-
-  # order_executor_3:
-  #   platform: linux/arm64
-  #   build:
-  #     context: ./
-  #     dockerfile: ./order_executor/Dockerfile
-  #   ports:
-  #     - "50058:50056"
-  #   environment:
-  #     - PYTHONUNBUFFERED=TRUE
-  #     - PYTHONFILE=/app/order_executor/src/app.py
-  #     - MONGO_URI=mongodb://admin:password@mongodb:27017/bookstore
-  #     - REDIS_HOST=redis
-  #     - REDIS_PORT=6379
-  #     - SERVICE_ID=order_executor_3
-  #   volumes:
-  #     - ./utils:/app/utils
-  #     - ./order_executor/src:/app/order_executor/src
-
 
 
   # ---- databases ----
@@ -223,8 +187,6 @@ services:
     image: redis:alpine
     ports:
       - "6379:6379"
-    # networks:
-    #   - app_network
     
     
 volumes:
