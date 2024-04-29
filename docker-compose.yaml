@@ -118,67 +118,6 @@ services:
       - ./order_queue/src:/app/order_queue/src
 
 
-  # order_executor_1:
-  #   platform: linux/arm64
-  #   build:
-  #     context: ./
-  #     dockerfile: ./order_executor/Dockerfile
-  #   depends_on:
-  #     - redis
-  #   ports:
-  #     - "50056:50056"
-  #   environment:
-  #     - PYTHONUNBUFFERED=TRUE
-  #     - PYTHONFILE=/app/order_executor/src/app.py
-  #     - MONGO_URI=mongodb://admin:password@mongodb:27017/bookstore
-  #     - SERVICE_ID=executor_1
-  #   volumes:
-  #     - ./utils:/app/utils
-  #     - ./order_executor/src:/app/order_executor/src
-
-  # order_executor_2:
-  #   platform: linux/arm64
-  #   build:
-  #     context: ./
-  #     dockerfile: ./order_executor/Dockerfile
-  #   depends_on:
-  #     - redis
-  #   ports:
-  #     - "50057:50056"
-  #   environment:
-  #     - PYTHONUNBUFFERED=TRUE
-  #     - PYTHONFILE=/app/order_executor/src/app.py
-  #     - MONGO_URI=mongodb://admin:password@mongodb:27017/bookstore
-  #     - SERVICE_ID=executor_2
-  #   volumes:
-  #     - ./utils:/app/utils
-  #     - ./order_executor/src:/app/order_executor/src
-
-
-
-  # order_executor:
-  #   platform: linux/arm64
-  #   build:
-  #     context: ./
-  #     dockerfile: ./order_executor/Dockerfile
-  #   ports:
-  #     - "50056"
-  #   deploy:
-  #     replicas: 2
-  #   depends_on:
-  #     - redis
-  #   environment:
-  #     - PYTHONUNBUFFERED=TRUE
-  #     - PYTHONFILE=/app/order_executor/src/app.py
-  #     - MONGO_URI=mongodb://admin:password@mongodb:27017/bookstore
-  #     - SERVICE_ID=executor_{HOSTNAME}
-  #   volumes:
-  #     - ./utils:/app/utils
-  #     - ./order_executor/src:/app/order_executor/src
-  #   networks:
-  #     - app_network
-
-
   order_executor_1:
     platform: linux/arm64
     build:
@@ -197,23 +136,41 @@ services:
       - ./utils:/app/utils
       - ./order_executor/src:/app/order_executor/src
 
-  order_executor_2:
-    platform: linux/arm64
-    build:
-      context: ./
-      dockerfile: ./order_executor/Dockerfile
-    ports:
-      - "50057:50056"
-    environment:
-      - PYTHONUNBUFFERED=TRUE
-      - PYTHONFILE=/app/order_executor/src/app.py
-      - MONGO_URI=mongodb://admin:password@mongodb:27017/bookstore
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - SERVICE_ID=order_executor_2
-    volumes:
-      - ./utils:/app/utils
-      - ./order_executor/src:/app/order_executor/src
+  # order_executor_2:
+  #   platform: linux/arm64
+  #   build:
+  #     context: ./
+  #     dockerfile: ./order_executor/Dockerfile
+  #   ports:
+  #     - "50057:50056"
+  #   environment:
+  #     - PYTHONUNBUFFERED=TRUE
+  #     - PYTHONFILE=/app/order_executor/src/app.py
+  #     - MONGO_URI=mongodb://admin:password@mongodb:27017/bookstore
+  #     - REDIS_HOST=redis
+  #     - REDIS_PORT=6379
+  #     - SERVICE_ID=order_executor_2
+  #   volumes:
+  #     - ./utils:/app/utils
+  #     - ./order_executor/src:/app/order_executor/src
+
+  # order_executor_3:
+  #   platform: linux/arm64
+  #   build:
+  #     context: ./
+  #     dockerfile: ./order_executor/Dockerfile
+  #   ports:
+  #     - "50058:50056"
+  #   environment:
+  #     - PYTHONUNBUFFERED=TRUE
+  #     - PYTHONFILE=/app/order_executor/src/app.py
+  #     - MONGO_URI=mongodb://admin:password@mongodb:27017/bookstore
+  #     - REDIS_HOST=redis
+  #     - REDIS_PORT=6379
+  #     - SERVICE_ID=order_executor_3
+  #   volumes:
+  #     - ./utils:/app/utils
+  #     - ./order_executor/src:/app/order_executor/src
 
 
 
