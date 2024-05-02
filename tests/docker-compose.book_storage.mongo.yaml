@@ -1,0 +1,121 @@
+version: '3'
+services:
+  # ---- books database ----
+  book_storage_1:
+    platform: linux/arm64
+    build:
+      context: ../
+      dockerfile: ./book_storage/Dockerfile
+    ports:
+      - "50060:50060"
+    environment:
+      - PYTHONUNBUFFERED=TRUE
+      - PYTHONFILE=/app/book_storage/src/app.py
+      - MONGO_URI=mongodb://admin:password@mongodb_1:27017/bookstore
+      - ZK_HOSTS=zookeeper:2181
+      - SERVICE_ID=book_storage_1
+    volumes:
+      - ../utils:/app/utils
+      - ../book_storage/src:/app/book_storage/src
+
+    
+  book_storage_2:
+    platform: linux/arm64
+    build:
+      context: ../
+      dockerfile: ./book_storage/Dockerfile
+    ports:
+      - "50061:50060"
+    environment:
+      - PYTHONUNBUFFERED=TRUE
+      - PYTHONFILE=/app/book_storage/src/app.py
+      - MONGO_URI=mongodb://admin:password@mongodb_2:27017/bookstore
+      - ZK_HOSTS=zookeeper:2181
+      - SERVICE_ID=book_storage_2
+    volumes:
+      - ../utils:/app/utils
+      - ../book_storage/src:/app/book_storage/src
+
+
+  book_storage_3:
+    platform: linux/arm64
+    build:
+      context: ../
+      dockerfile: ./book_storage/Dockerfile
+    ports:
+      - "50062:50060"
+    environment:
+      - PYTHONUNBUFFERED=TRUE
+      - PYTHONFILE=/app/book_storage/src/app.py
+      - MONGO_URI=mongodb://admin:password@mongodb_3:27017/bookstore
+      - ZK_HOSTS=zookeeper:2181
+      - SERVICE_ID=book_storage_3
+    volumes:
+      - ../utils:/app/utils
+      - ../book_storage/src:/app/book_storage/src
+
+
+  # ---- databases ----
+  # https://gist.github.com/gbzarelli/c15b607d62fc98ae436564bf8129ea8e
+  mongodb_1:
+    container_name: mongodb_1
+    image: mongo:latest
+    restart: always
+    environment:
+      MONGO_INITDB_DATABASE: bookstore
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password
+    volumes:
+      - mongodb_data_1:/data/db
+      - ../mongodb/init_scripts/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    ports:
+      - "27017:27017"
+    command: --quiet
+
+
+  mongodb_2:
+    container_name: mongodb_2
+    image: mongo:latest
+    restart: always
+    environment:
+      MONGO_INITDB_DATABASE: bookstore
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password
+    volumes:
+      - mongodb_data_2:/data/db
+      - ../mongodb/init_scripts/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    ports:
+      - "27018:27017"
+    command: --quiet
+
+
+  mongodb_3:
+    container_name: mongodb_3
+    image: mongo:latest
+    restart: always
+    environment:
+      MONGO_INITDB_DATABASE: bookstore
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password
+    volumes:
+      - mongodb_data_3:/data/db
+      - ../mongodb/init_scripts/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    ports:
+      - "27019:27017"
+    command: --quiet
+
+
+  zookeeper:
+    image: zookeeper:3.5
+    ports:
+      - "2181:2181"
+
+volumes:
+  mongodb_data_1:
+  mongodb_data_2:
+  mongodb_data_3:
+  mongodb_users_data:
+
+networks:
+  app_network:
+    driver: bridge

@@ -3,15 +3,11 @@ services:
   frontend:
     platform: linux/arm64
     build:
-      # Use the current directory as the build context
-      # This allows us to access the files in the current directory inside the Dockerfile
       context: ./
       dockerfile: ./frontend/Dockerfile
     ports:
-      # Expose port 8080 on the host, and map port 3000 of the container to port 8080 on the host
       - "8080:3000"
     volumes:
-      # Mount the frontend directory to the /app directory in the container
       - ./frontend:/app
       - /app/node_modules
     environment:
@@ -21,85 +17,75 @@ services:
   orchestrator:
     platform: linux/arm64
     build:
-      # Use the current directory as the build context
-      # This allows us to access the files in the current directory inside the Dockerfile
       context: ./
-      # Use the Dockerfile in the orchestrator directory
       dockerfile: ./orchestrator/Dockerfile
     ports:
-      # Expose port 8081 on the host, and map port 5000 of the container to port 8081 on the host
       - 8081:5000
     environment:
-      # Pass the environment variables to the container
-      # The PYTHONUNBUFFERED environment variable ensures that the output from the application is logged to the console
       - PYTHONUNBUFFERED=TRUE
-      # The PYTHONFILE environment variable specifies the absolute entry point of the application
-      # Check app.py in the orchestrator directory to see how this is used
       - PYTHONFILE=/app/orchestrator/src/app.py
       - MONGO_URI=mongodb://admin:password@mongodb:27017/bookstore
     volumes:
-      # Mount the utils directory in the current directory to the /app/utils directory in the container
       - ./utils:/app/utils
-      # Mount the orchestrator/src directory in the current directory to the /app/orchestrator/src directory in the container
       - ./orchestrator/src:/app/orchestrator/src
   
-  fraud_detection:
-    platform: linux/arm64
-    build:
-      context: ./
-      dockerfile: ./fraud_detection/Dockerfile
-    ports:
-      - 50051:50051
-    environment:
-      - PYTHONUNBUFFERED=TRUE
-      - PYTHONFILE=/app/fraud_detection/src/app.py
-    volumes:
-      - ./utils:/app/utils
-      - ./fraud_detection/src:/app/fraud_detection/src
+  # fraud_detection:
+  #   platform: linux/arm64
+  #   build:
+  #     context: ./
+  #     dockerfile: ./fraud_detection/Dockerfile
+  #   ports:
+  #     - 50051:50051
+  #   environment:
+  #     - PYTHONUNBUFFERED=TRUE
+  #     - PYTHONFILE=/app/fraud_detection/src/app.py
+  #   volumes:
+  #     - ./utils:/app/utils
+  #     - ./fraud_detection/src:/app/fraud_detection/src
 
-  transaction_verification:
-    platform: linux/arm64
-    build:
-      context: ./
-      dockerfile: ./transaction_verification/Dockerfile
-    ports:
-      - 50052:50052
-    environment:
-      - PYTHONUNBUFFERED=TRUE
-      - PYTHONFILE=/app/transaction_verification/src/app.py
-    volumes:
-      - ./utils:/app/utils
-      - ./transaction_verification/src:/app/transaction_verification/src
+  # transaction_verification:
+  #   platform: linux/arm64
+  #   build:
+  #     context: ./
+  #     dockerfile: ./transaction_verification/Dockerfile
+  #   ports:
+  #     - 50052:50052
+  #   environment:
+  #     - PYTHONUNBUFFERED=TRUE
+  #     - PYTHONFILE=/app/transaction_verification/src/app.py
+  #   volumes:
+  #     - ./utils:/app/utils
+  #     - ./transaction_verification/src:/app/transaction_verification/src
 
-  suggestions:
-    platform: linux/arm64
-    build:
-      context: ./
-      dockerfile: ./suggestions/Dockerfile
-    ports:
-      - 50053:50053
-    environment:
-      - PYTHONUNBUFFERED=TRUE
-      - PYTHONFILE=/app/suggestions/src/app.py
-      - MONGO_URI=mongodb://admin:password@mongodb:27017/bookstore
-    volumes:
-      - ./utils:/app/utils
-      - ./suggestions/src:/app/suggestions/src
+  # suggestions:
+  #   platform: linux/arm64
+  #   build:
+  #     context: ./
+  #     dockerfile: ./suggestions/Dockerfile
+  #   ports:
+  #     - 50053:50053
+  #   environment:
+  #     - PYTHONUNBUFFERED=TRUE
+  #     - PYTHONFILE=/app/suggestions/src/app.py
+  #     - MONGO_URI=mongodb://admin:password@mongodb:27017/bookstore
+  #   volumes:
+  #     - ./utils:/app/utils
+  #     - ./suggestions/src:/app/suggestions/src
 
-  book_suggestion_model:
-    platform: linux/arm64
-    build:
-      context: ./
-      dockerfile: ./book_suggestion_model/Dockerfile
-    ports:
-      - 50054:50054
-    environment:
-      - PYTHONUNBUFFERED=TRUE
-      - PYTHONFILE=/app/book_suggestion_model/src/app.py
-      - MONGO_URI=mongodb://admin:password@mongodb:27017/bookstore
-    volumes:
-      - ./utils:/app/utils
-      - ./book_suggestion_model/src:/app/book_suggestion_model/src
+  # book_suggestion_model:
+  #   platform: linux/arm64
+  #   build:
+  #     context: ./
+  #     dockerfile: ./book_suggestion_model/Dockerfile
+  #   ports:
+  #     - 50054:50054
+  #   environment:
+  #     - PYTHONUNBUFFERED=TRUE
+  #     - PYTHONFILE=/app/book_suggestion_model/src/app.py
+  #     - MONGO_URI=mongodb://admin:password@mongodb:27017/bookstore
+  #   volumes:
+  #     - ./utils:/app/utils
+  #     - ./book_suggestion_model/src:/app/book_suggestion_model/src
 
   # ---- order processing ----
   order_queue:
@@ -135,6 +121,67 @@ services:
     volumes:
       - ./utils:/app/utils
       - ./order_executor/src:/app/order_executor/src
+
+
+  # ---- books database ----
+  book_storage_1:
+    platform: linux/arm64
+    build:
+      context: ./
+      dockerfile: ./book_storage/Dockerfile
+    ports:
+      - "50060:50060"
+    environment:
+      - PYTHONUNBUFFERED=TRUE
+      - PYTHONFILE=/app/book_storage/src/app.py
+      - MONGO_URI=mongodb://admin:password@mongodb:27017/bookstore
+      - ZK_HOSTS=zookeeper:2181
+      - SERVICE_ID=book_storage_1
+    volumes:
+      - ./utils:/app/utils
+      - ./book_storage/src:/app/book_storage/src
+
+    
+  book_storage_2:
+    platform: linux/arm64
+    build:
+      context: ./
+      dockerfile: ./book_storage/Dockerfile
+    ports:
+      - "50061:50060"
+    environment:
+      - PYTHONUNBUFFERED=TRUE
+      - PYTHONFILE=/app/book_storage/src/app.py
+      - MONGO_URI=mongodb://admin:password@mongodb:27017/bookstore
+      - ZK_HOSTS=zookeeper:2181
+      - SERVICE_ID=book_storage_2
+    volumes:
+      - ./utils:/app/utils
+      - ./book_storage/src:/app/book_storage/src
+
+
+  book_storage_3:
+    platform: linux/arm64
+    build:
+      context: ./
+      dockerfile: ./book_storage/Dockerfile
+    ports:
+      - "50062:50060"
+    environment:
+      - PYTHONUNBUFFERED=TRUE
+      - PYTHONFILE=/app/book_storage/src/app.py
+      - MONGO_URI=mongodb://admin:password@mongodb:27017/bookstore
+      - ZK_HOSTS=zookeeper:2181
+      - SERVICE_ID=book_storage_3
+    volumes:
+      - ./utils:/app/utils
+      - ./book_storage/src:/app/book_storage/src
+
+
+  zookeeper:
+    image: zookeeper:3.5
+    ports:
+      - "2181:2181"
 
 
 

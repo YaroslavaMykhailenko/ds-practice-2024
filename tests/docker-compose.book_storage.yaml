@@ -1,0 +1,64 @@
+version: '3'
+services:
+  # ---- books database ----
+  book_storage_1:
+    platform: linux/arm64
+    build:
+      context: ../
+      dockerfile: ./book_storage/Dockerfile
+    ports:
+      - "50060:50060"
+    environment:
+      - PYTHONUNBUFFERED=TRUE
+      - PYTHONFILE=/app/book_storage/src/app.py
+      - MONGO_URI=mongodb://admin:password@mongodb:27017/bookstore
+      - ZK_HOSTS=zookeeper:2181
+      - SERVICE_ID=book_storage_1
+    volumes:
+      - ../utils:/app/utils
+      - ../book_storage/src:/app/book_storage/src
+
+    
+  book_storage_2:
+    platform: linux/arm64
+    build:
+      context: ../
+      dockerfile: ./book_storage/Dockerfile
+    ports:
+      - "50061:50060"
+    environment:
+      - PYTHONUNBUFFERED=TRUE
+      - PYTHONFILE=/app/book_storage/src/app.py
+      - MONGO_URI=mongodb://admin:password@mongodb:27017/bookstore
+      - ZK_HOSTS=zookeeper:2181
+      - SERVICE_ID=book_storage_2
+    volumes:
+      - ../utils:/app/utils
+      - ../book_storage/src:/app/book_storage/src
+
+
+  book_storage_3:
+    platform: linux/arm64
+    build:
+      context: ../
+      dockerfile: ./book_storage/Dockerfile
+    ports:
+      - "50062:50060"
+    environment:
+      - PYTHONUNBUFFERED=TRUE
+      - PYTHONFILE=/app/book_storage/src/app.py
+      - MONGO_URI=mongodb://admin:password@mongodb:27017/bookstore
+      - ZK_HOSTS=zookeeper:2181
+      - SERVICE_ID=book_storage_3
+    volumes:
+      - ../utils:/app/utils
+      - ../book_storage/src:/app/book_storage/src
+
+
+  
+
+
+  zookeeper:
+    image: zookeeper:3.5
+    ports:
+      - "2181:2181"
