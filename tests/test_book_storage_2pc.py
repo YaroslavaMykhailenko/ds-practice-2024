@@ -1,47 +1,45 @@
 import grpc
 import json
 import sys
-sys.path.append("./")  # Assuming your protobuf files are compiled in a visible directory.
+sys.path.append("./")
 
 from utils.pb.book_storage import book_storage_pb2, book_storage_pb2_grpc
 
 def main():
-    # Setup the gRPC channel and stub
     with grpc.insecure_channel('localhost:50060') as channel:
         stub = book_storage_pb2_grpc.BookStorageStub(channel)
-
+        
+        
         # Create a new book entry
         new_book = book_storage_pb2.Book(
-            id="10",
-            title="Advanced CSS and Sass",
-            author="Alex Johnson",
-            description="Take your CSS to the next level with Sass.",
-            copies=8,
-            copiesAvailable=8,
-            category="Web Design",
-            img="https://m.media-amazon.com/images/I/51CsK0NNtxL._SY445_SX342_.jpg",
+            id="5",
+            title="React - Up & Running",
+            author="Carlos Stevens",
+            description="Building Web Applications with React.",
+            copies=10,
+            copiesAvailable=10,
+            category="Web Development",
+            img="https://m.media-amazon.com/images/I/418mC3XLQlL._SY445_SX342_.jpg",
             price=12
         )
 
-        # Write the new book to the database
-        # write_response = stub.Write(book_storage_pb2.WriteRequest(key="10", value=new_book))
-        # print(f"Write Response: {write_response.success}")
+        write_response = stub.Write(book_storage_pb2.WriteRequest(key="5", value=new_book))
+        print(f"Write Response: {write_response.success}")
 
-        # Prepare an order using the order details JSON
         order_json = json.dumps({
             "user": {"name": "Yaroslava", "contact": "58180469"},
             "creditCard": {"number": "1234567890987654", "expirationDate": "12/26", "cvv": "123"},
             "userComment": "",
             "items": [{
-                "id": "10",
-                "title": "Advanced CSS and Sass",
-                "author": "Alex Johnson",
-                "description": "Take your CSS to the next level with Sass.",
-                "copies": 8,
-                "copiesAvailable": 8,
-                "category": "Web Design",
-                "img": "https://m.media-amazon.com/images/I/51CsK0NNtxL._SY445_SX342_.jpg",
-                "price": 12,
+                "id": "5",
+                "title": "React - Up & Running",
+                "author": "Carlos Stevens",
+                "description": "Building Web Applications with React.",
+                "copies": 10,
+                "copiesAvailable": 10,
+                "category": "Web Development",
+                "img": "https://m.media-amazon.com/images/I/418mC3XLQlL._SY445_SX342_.jpg",
+                "price": 5,
                 "quantity": 1
             }],
             "discountCode": "",

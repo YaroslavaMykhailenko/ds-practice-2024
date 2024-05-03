@@ -515,7 +515,12 @@ class BookStorage(book_storage_pb2_grpc.BookStorageServicer):
     def Write(self, request, context):
         with self.lock:
             book = self.books_collection.find_one({"id": request.key})
-            new_version_number = book['versions'][-1]['version'] + 1 if book else 1
+
+            if 'versions' in book and book:
+                new_version_number = book['versions'][-1]['version'] + 1
+            else:
+                new_version_number = 1
+                
             new_version = {
                 "version": new_version_number,
                 "title": request.value.title,
