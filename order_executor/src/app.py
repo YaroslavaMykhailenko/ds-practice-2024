@@ -14,6 +14,12 @@ from utils.pb.suggestions import suggestions_pb2, suggestions_pb2_grpc
 from utils.pb.order_queue import order_queue_pb2, order_queue_pb2_grpc
 from utils.pb.order_executor import order_executor_pb2, order_executor_pb2_grpc
 
+from utils.pb.payment import payment_pb2
+from utils.pb.payment import payment_pb2_grpc
+
+from utils.pb.book_storage import book_storage_pb2
+from utils.pb.book_storage import book_storage_pb2_grpc
+
 REDIS_HOST = os.getenv('REDIS_HOST', 'redis')
 REDIS_PORT = int(os.environ.get("REDIS_PORT", "6379"))
 ORDER_QUEUE_SERVICE = 'order_queue:50055'
@@ -221,7 +227,19 @@ class OrderExecutor(order_executor_pb2_grpc.OrderExecutorServiceServicer):
                     order_results = self._ProcessOrder(order)
                     order_results = json.dumps(order_results)
 
-                    return order_executor_pb2.ProcessOrderResponse(success=True, order_json=order.order_json, order_result=order_results)
+                    payment_result, db_result = self.HandleOrderTransaction(order)
+                     
+                    while payment_result.message == 'Abort' or db_result.message == 'Abort':
+                        time.sleep(50)
+                        payment_result, db_result = self.HandleOrderTransaction(order)
+
+                    if payment_result.message == 'Commit' and db_result.message == 'Commit':
+                        if payment_result.success and db_result.success: 
+                            logger.info('Order processed successfully. Payment completed and db updated')
+                            return order_executor_pb2.ProcessOrderResponse(success=True, order_json=order.order_json, order_result=order_results)
+                        else:
+                            logger.info('Order processed unsuccessfully. Error in payment or db commit')
+                            return order_executor_pb2.ProcessOrderResponse(success=False, order_json=order.order_json, order_result={})
                 else:
                     return order_executor_pb2.ProcessOrderResponse(success=False, order_json=order.order_json, order_result=order_results)
         
@@ -264,7 +282,59 @@ class OrderExecutor(order_executor_pb2_grpc.OrderExecutorServiceServicer):
             thread.join()
 
         return results
+    
 
+    def HandleOrderTransaction(self, order):
+
+        # Start 2PC        
+        logger.info(f"2PC protocol...")
+        logger.info(f"Executor sent 'prepare message' to servises...")
+
+        with grpc.insecure_channel('payment_service:50057') as channel:
+            stub = payment_pb2_grpc.PaymentServiceStub(channel)
+            prepare_payment_request = payment_pb2.PrepareRequest(order_id=order.id, order_details_json=order.order_json, message='VOTE_REQUEST')
+            prepare_payment_response = stub.Prepare(prepare_payment_request)
+
+        with grpc.insecure_channel('book_storage_1:50060') as channel:
+            stub = book_storage_pb2_grpc.BookStorageStub(channel)
+            prepare_book_request = book_storage_pb2.PrepareRequest(order_id=order.id, order_details_json=order.order_json, message='VOTE_REQUEST')
+            prepare_book_response = stub.Prepare(prepare_book_request)
+        
+        
+
+        if prepare_payment_response.willCommit and prepare_book_response.willCommit:
+
+            logger.info(f"All services ready to commit!")
+            logger.info(f"Executor sent 'global commit message' to services...")
+
+            with grpc.insecure_channel('payment_service:50057') as channel:
+                stub = payment_pb2_grpc.PaymentServiceStub(channel)
+                commit_payment_request = payment_pb2.CommitRequest(order_id=order.id, message='GLOBAL_COMMIT')
+                commit_payment_response = stub.Commit(commit_payment_request)
+            
+            with grpc.insecure_channel('book_storage_1:50060') as channel:
+                stub = book_storage_pb2_grpc.BookStorageStub(channel)
+                commit_book_request = book_storage_pb2.CommitRequest(order_id=order.id, message='GLOBAL_COMMIT')
+                commit_book_response = stub.Commit(commit_book_request)
+
+            return commit_payment_response, commit_book_response      
+
+        
+        else:
+            logger.info(f"One of the services abort to commit!")
+            logger.info(f"Executor sent 'global abort message' to services...")
+
+            with grpc.insecure_channel('payment_service:50057') as channel:
+                stub = payment_pb2_grpc.PaymentServiceStub(channel)
+                abort_payment_request = payment_pb2.AbortRequest(order_id=order.id, message='GLOBAL_ABORT')
+                abort_payment_response = stub.Abort(abort_payment_request)
+
+            with grpc.insecure_channel('book_storage_1:50060') as channel:
+                stub = book_storage_pb2_grpc.BookStorageStub(channel)
+                abort_book_request = book_storage_pb2.AbortRequest(order_id=order.id, message='GLOBAL_ABORT')
+                abort_book_response = stub.Abort(abort_book_request)
+
+            return abort_payment_response, abort_book_response
 
 
 def serve():

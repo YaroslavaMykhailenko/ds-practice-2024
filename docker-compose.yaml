@@ -122,6 +122,19 @@ services:
       - ./utils:/app/utils
       - ./order_executor/src:/app/order_executor/src
 
+  payment_service:
+    platform: linux/arm64
+    build:
+      context: ./
+      dockerfile: ./payment/Dockerfile
+    ports:
+      - "50057:50057"
+    environment:
+      - PYTHONUNBUFFERED=TRUE
+      - PYTHONFILE=/app/payment/src/app.py
+    volumes:
+      - ./utils:/app/utils
+      - ./payment/src:/app/payment/src
 
   # ---- books database ----
   book_storage_1:
