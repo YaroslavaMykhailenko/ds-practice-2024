@@ -28,24 +28,24 @@ def main():
         stub = book_storage_pb2_grpc.BookStorageStub(channel)
 
         # Create a new book entry
-        new_book = book_storage_pb2.Book(
-            id="9",
-            title="Effective Python",
-            author="Brett Slatkin",
-            description="59 Specific Ways to Write Better Python",
-            copies=5,
-            copiesAvailable=5,
-            category="Programming",
-            img="https://example.com/effective_python.jpg",
-            price=30
-        )
+        # new_book = book_storage_pb2.Book(
+        #     id="9",
+        #     title="Effective Python",
+        #     author="Brett Slatkin",
+        #     description="59 Specific Ways to Write Better Python",
+        #     copies=5,
+        #     copiesAvailable=5,
+        #     category="Programming",
+        #     img="https://example.com/effective_python.jpg",
+        #     price=30
+        # )
 
-        # Write the new book to the database
-        write_response = stub.Write(book_storage_pb2.WriteRequest(key="9", value=new_book))
-        print(f"Write Response: {write_response.success}")
+        # # Write the new book to the database
+        # write_response = stub.Write(book_storage_pb2.WriteRequest(key="9", value=new_book))
+        # print(f"Write Response: {write_response.success}")
 
         # Read the book back from the database
-        read_response = stub.Read(book_storage_pb2.ReadRequest(key="9"))
+        read_response = stub.Read(book_storage_pb2.ReadRequest(key="5"))
         if read_response.found:
             print(f"Read Response: {read_response.value}")
         else:
