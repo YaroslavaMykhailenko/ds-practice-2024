@@ -29,63 +29,63 @@ services:
       - ./utils:/app/utils
       - ./orchestrator/src:/app/orchestrator/src
   
-  # fraud_detection:
-  #   platform: linux/arm64
-  #   build:
-  #     context: ./
-  #     dockerfile: ./fraud_detection/Dockerfile
-  #   ports:
-  #     - 50051:50051
-  #   environment:
-  #     - PYTHONUNBUFFERED=TRUE
-  #     - PYTHONFILE=/app/fraud_detection/src/app.py
-  #   volumes:
-  #     - ./utils:/app/utils
-  #     - ./fraud_detection/src:/app/fraud_detection/src
+  fraud_detection:
+    platform: linux/arm64
+    build:
+      context: ./
+      dockerfile: ./fraud_detection/Dockerfile
+    ports:
+      - 50051:50051
+    environment:
+      - PYTHONUNBUFFERED=TRUE
+      - PYTHONFILE=/app/fraud_detection/src/app.py
+    volumes:
+      - ./utils:/app/utils
+      - ./fraud_detection/src:/app/fraud_detection/src
 
-  # transaction_verification:
-  #   platform: linux/arm64
-  #   build:
-  #     context: ./
-  #     dockerfile: ./transaction_verification/Dockerfile
-  #   ports:
-  #     - 50052:50052
-  #   environment:
-  #     - PYTHONUNBUFFERED=TRUE
-  #     - PYTHONFILE=/app/transaction_verification/src/app.py
-  #   volumes:
-  #     - ./utils:/app/utils
-  #     - ./transaction_verification/src:/app/transaction_verification/src
+  transaction_verification:
+    platform: linux/arm64
+    build:
+      context: ./
+      dockerfile: ./transaction_verification/Dockerfile
+    ports:
+      - 50052:50052
+    environment:
+      - PYTHONUNBUFFERED=TRUE
+      - PYTHONFILE=/app/transaction_verification/src/app.py
+    volumes:
+      - ./utils:/app/utils
+      - ./transaction_verification/src:/app/transaction_verification/src
 
-  # suggestions:
-  #   platform: linux/arm64
-  #   build:
-  #     context: ./
-  #     dockerfile: ./suggestions/Dockerfile
-  #   ports:
-  #     - 50053:50053
-  #   environment:
-  #     - PYTHONUNBUFFERED=TRUE
-  #     - PYTHONFILE=/app/suggestions/src/app.py
-  #     - MONGO_URI=mongodb://admin:password@mongodb:27017/bookstore
-  #   volumes:
-  #     - ./utils:/app/utils
-  #     - ./suggestions/src:/app/suggestions/src
+  suggestions:
+    platform: linux/arm64
+    build:
+      context: ./
+      dockerfile: ./suggestions/Dockerfile
+    ports:
+      - 50053:50053
+    environment:
+      - PYTHONUNBUFFERED=TRUE
+      - PYTHONFILE=/app/suggestions/src/app.py
+      - MONGO_URI=mongodb://admin:password@mongodb:27017/bookstore
+    volumes:
+      - ./utils:/app/utils
+      - ./suggestions/src:/app/suggestions/src
 
-  # book_suggestion_model:
-  #   platform: linux/arm64
-  #   build:
-  #     context: ./
-  #     dockerfile: ./book_suggestion_model/Dockerfile
-  #   ports:
-  #     - 50054:50054
-  #   environment:
-  #     - PYTHONUNBUFFERED=TRUE
-  #     - PYTHONFILE=/app/book_suggestion_model/src/app.py
-  #     - MONGO_URI=mongodb://admin:password@mongodb:27017/bookstore
-  #   volumes:
-  #     - ./utils:/app/utils
-  #     - ./book_suggestion_model/src:/app/book_suggestion_model/src
+  book_suggestion_model:
+    platform: linux/arm64
+    build:
+      context: ./
+      dockerfile: ./book_suggestion_model/Dockerfile
+    ports:
+      - 50054:50054
+    environment:
+      - PYTHONUNBUFFERED=TRUE
+      - PYTHONFILE=/app/book_suggestion_model/src/app.py
+      - MONGO_URI=mongodb://admin:password@mongodb:27017/bookstore
+    volumes:
+      - ./utils:/app/utils
+      - ./book_suggestion_model/src:/app/book_suggestion_model/src
 
   # ---- order processing ----
   order_queue:
@@ -122,13 +122,31 @@ services:
       - ./utils:/app/utils
       - ./order_executor/src:/app/order_executor/src
 
+  order_executor_2:
+    platform: linux/arm64
+    build:
+      context: ./
+      dockerfile: ./order_executor/Dockerfile
+    ports:
+      - "50057:50056"
+    environment:
+      - PYTHONUNBUFFERED=TRUE
+      - PYTHONFILE=/app/order_executor/src/app.py
+      - MONGO_URI=mongodb://admin:password@mongodb:27017/bookstore
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - SERVICE_ID=order_executor_2
+    volumes:
+      - ./utils:/app/utils
+      - ./order_executor/src:/app/order_executor/src
+
   payment_service:
     platform: linux/arm64
     build:
       context: ./
       dockerfile: ./payment/Dockerfile
     ports:
-      - "50057:50057"
+      - "50058:50058"
     environment:
       - PYTHONUNBUFFERED=TRUE
       - PYTHONFILE=/app/payment/src/app.py

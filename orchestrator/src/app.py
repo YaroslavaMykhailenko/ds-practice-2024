@@ -149,8 +149,6 @@ def checkout():
     enqueue_order(order_details)
     results = process_orders()
 
-    raise
-
     if results["success"]:
         return jsonify({
             'orderId': results["order_json"].get('orderId', 'Unknown'),

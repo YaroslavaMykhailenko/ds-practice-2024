@@ -290,7 +290,7 @@ class OrderExecutor(order_executor_pb2_grpc.OrderExecutorServiceServicer):
         logger.info(f"2PC protocol...")
         logger.info(f"Executor sent 'prepare message' to servises...")
 
-        with grpc.insecure_channel('payment_service:50057') as channel:
+        with grpc.insecure_channel('payment_service:50058') as channel:
             stub = payment_pb2_grpc.PaymentServiceStub(channel)
             prepare_payment_request = payment_pb2.PrepareRequest(order_id=order.id, order_details_json=order.order_json, message='VOTE_REQUEST')
             prepare_payment_response = stub.Prepare(prepare_payment_request)
@@ -307,7 +307,7 @@ class OrderExecutor(order_executor_pb2_grpc.OrderExecutorServiceServicer):
             logger.info(f"All services ready to commit!")
             logger.info(f"Executor sent 'global commit message' to services...")
 
-            with grpc.insecure_channel('payment_service:50057') as channel:
+            with grpc.insecure_channel('payment_service:50058') as channel:
                 stub = payment_pb2_grpc.PaymentServiceStub(channel)
                 commit_payment_request = payment_pb2.CommitRequest(order_id=order.id, message='GLOBAL_COMMIT')
                 commit_payment_response = stub.Commit(commit_payment_request)
@@ -324,7 +324,7 @@ class OrderExecutor(order_executor_pb2_grpc.OrderExecutorServiceServicer):
             logger.info(f"One of the services abort to commit!")
             logger.info(f"Executor sent 'global abort message' to services...")
 
-            with grpc.insecure_channel('payment_service:50057') as channel:
+            with grpc.insecure_channel('payment_service:50058') as channel:
                 stub = payment_pb2_grpc.PaymentServiceStub(channel)
                 abort_payment_request = payment_pb2.AbortRequest(order_id=order.id, message='GLOBAL_ABORT')
                 abort_payment_response = stub.Abort(abort_payment_request)
