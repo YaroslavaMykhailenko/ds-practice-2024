@@ -30,6 +30,7 @@ class BookStorage(book_storage_pb2_grpc.BookStorageServicer):
         self.setup_chain()
 
         self.orders_cache = {}
+        self.verbose = False
         
 
     def register_with_zookeeper(self):
@@ -77,7 +78,6 @@ class BookStorage(book_storage_pb2_grpc.BookStorageServicer):
     def Write(self, request, context):
         with self.lock:
             book = self.books_collection.find_one({"id": request.key})
-            print(f"current book: {book}")
 
             if 'versions' in book and book:
                 new_version_number = book['versions'][-1]['version'] + 1
@@ -109,24 +109,24 @@ class BookStorage(book_storage_pb2_grpc.BookStorageServicer):
                     "versions": [new_version]
                     })
 
-            print(f"Updated MongoDB with key {request.key} to version {new_version_number}")
+            if self.verbose:
+                print(f"Updated MongoDB with key {request.key} to version {new_version_number}")
 
+                print(f"=" * 25)
+                print(f"[Write] - Node info...")
+                print(f"=" * 25)
 
-            print(f"=" * 25)
-            print(f"[Write] - Node info...")
-            print(f"=" * 25)
+                print(f"-" * 25)
+                print(f"node_id: {self.node_id}")
+                print(f"is_head: {self.is_head}, is_tail: {self.is_tail}")
+                print(f"prev_node: {self.prev_node}, next_node: {self.next_node}")
+                print()
+                print(f"versions: {new_version}")
+                print(f"next_node: {self.next_node}")
+                print(f"-" * 25)
+                print()
 
-            print(f"-" * 25)
-            print(f"node_id: {self.node_id}")
-            print(f"is_head: {self.is_head}, is_tail: {self.is_tail}")
-            print(f"prev_node: {self.prev_node}, next_node: {self.next_node}")
-            print()
-            print(f"versions: {new_version}")
-            print(f"next_node: {self.next_node}")
-            print(f"-" * 25)
-            print()
-
-            print(f"id: {request.key}, new_version_number: {new_version_number}")
+                print(f"id: {request.key}, new_version_number: {new_version_number}")
 
             # 2.3.4  Chain Replication with Apportioned Queries
             # - When a node receives a new version of an object (via
@@ -144,18 +144,18 @@ class BookStorage(book_storage_pb2_grpc.BookStorageServicer):
 
     def propagate_write(self, request):
         if self.next_node:
+            if self.verbose:
+                print(f"=" * 25)
+                print(f"[Write] - Calling next node...")
+                print(f"=" * 25)
 
-            print(f"=" * 25)
-            print(f"[Write] - Calling next node...")
-            print(f"=" * 25)
-
-            print(f"-" * 25)
-            print(f"node_id: {self.node_id}")
-            print(f"is_head: {self.is_head}, is_tail: {self.is_tail}")
-            print(f"prev_node: {self.prev_node}, next_node: {self.next_node}")
-            print()
-            print(f"calling next_node: {self.next_node} at: [{self.next_node}:50060]")
-            print()
+                print(f"-" * 25)
+                print(f"node_id: {self.node_id}")
+                print(f"is_head: {self.is_head}, is_tail: {self.is_tail}")
+                print(f"prev_node: {self.prev_node}, next_node: {self.next_node}")
+                print()
+                print(f"calling next_node: {self.next_node} at: [{self.next_node}:50060]")
+                print()
 
             try:
                 with grpc.insecure_channel(f"{self.next_node}:50060") as channel:
@@ -180,13 +180,15 @@ class BookStorage(book_storage_pb2_grpc.BookStorageServicer):
 
 
     def mark_version_as_clean(self, key, version):
-        print(f"=" * 25)
-        print(f"[Update] - Updating key state...")
-        print(f"=" * 25)
-        print(f"-" * 25)
+        if self.verbose:
+            print(f"=" * 25)
+            print(f"[Update] - Updating key state...")
+            print(f"=" * 25)
+            print(f"-" * 25)
 
         book = self.books_collection.find_one({"id": key})
-        print(f"prev: {book['versions']}")
+        if self.verbose:
+            print(f"prev: {book['versions']}")
         
         # Update the document in MongoDB to mark the version as clean
         update_result = self.books_collection.update_one(
@@ -195,10 +197,12 @@ class BookStorage(book_storage_pb2_grpc.BookStorageServicer):
         )
 
         book = self.books_collection.find_one({"id": key})
-        print(f"upd: {book['versions']}")
+        if self.verbose:
+            print(f"upd: {book['versions']}")
 
         if update_result.modified_count == 1:
-            print(f"Successfully marked version {version} of key {key} as clean.")
+            if self.verbose:
+                print(f"Successfully marked version {version} of key {key} as clean.")
         else:
             print(f"Failed to mark version {version} of key {key} as clean. Document might not exist or version number mismatch.")
 
@@ -207,15 +211,16 @@ class BookStorage(book_storage_pb2_grpc.BookStorageServicer):
 
     def send_clean_ack(self, key, version):
         if self.prev_node:
-            print(f"=" * 25)
-            print(f"[Clean] - Chain back traversal...")
-            print(f"=" * 25)
-            print(f"-" * 25)
-            print(f"(key, version): ({key}, {version})")
-            print(f"node_id: {self.node_id}")
-            print(f"prev_node: {self.prev_node}")
-            print(f"-" * 25)
-            print()
+            if self.verbose:
+                print(f"=" * 25)
+                print(f"[Clean] - Chain back traversal...")
+                print(f"=" * 25)
+                print(f"-" * 25)
+                print(f"(key, version): ({key}, {version})")
+                print(f"node_id: {self.node_id}")
+                print(f"prev_node: {self.prev_node}")
+                print(f"-" * 25)
+                print()
 
             try:
                 with grpc.insecure_channel(f"{self.prev_node}:50060") as channel:
@@ -231,19 +236,20 @@ class BookStorage(book_storage_pb2_grpc.BookStorageServicer):
             book = self.books_collection.find_one({"id": request.key})
             # book = book["versions"][-1]
 
-            print(f"=" * 25)
-            print(f"[Read] - Node info...")
-            print(f"=" * 25)
+            if self.verbose:
+                print(f"=" * 25)
+                print(f"[Read] - Node info...")
+                print(f"=" * 25)
 
-            print(f"-" * 25)
-            print(f"node_id: {self.node_id}")
-            print(f"is_head: {self.is_head}, is_tail: {self.is_tail}")
-            print(f"prev_node: {self.prev_node}, next_node: {self.next_node}")
-            print()
-            print(f"book: {book}")
-            print(f"next_node: {self.next_node}")
-            print(f"-" * 25)
-            print()
+                print(f"-" * 25)
+                print(f"node_id: {self.node_id}")
+                print(f"is_head: {self.is_head}, is_tail: {self.is_tail}")
+                print(f"prev_node: {self.prev_node}, next_node: {self.next_node}")
+                print()
+                print(f"book: {book}")
+                print(f"next_node: {self.next_node}")
+                print(f"-" * 25)
+                print()
 
             if book:
                 latest_version = book['versions'][-1]
@@ -267,8 +273,9 @@ class BookStorage(book_storage_pb2_grpc.BookStorageServicer):
                                                          clean=latest_version['clean'], 
                                                          found=True)
                 else:
-                    print(f"[Read] - Querying tail from {self.node_id}")
-                    print()
+                    if self.verbose:
+                        print(f"[Read] - Querying tail from {self.node_id}")
+                        print()
 
                     clean_response = self.query_tail_for_clean_version(request.key)
                     if clean_response.found:
@@ -308,15 +315,16 @@ class BookStorage(book_storage_pb2_grpc.BookStorageServicer):
         
         if book:
             latest_version = book['versions'][-1]
-
-            print(f"latest_version: {latest_version}")
+            if self.verbose:
+                print(f"latest_version: {latest_version}")
 
             new_version = dict(latest_version)
             new_version['copiesAvailable'] -= request.value
             new_version['version'] += 1
             new_version['clean'] = False
 
-            print(f"new_version: {new_version}")
+            if self.verbose:
+                print(f"new_version: {new_version}")
 
             self.books_collection.update_one(
                 {"_id": book['_id']},
@@ -395,27 +403,30 @@ class BookStorage(book_storage_pb2_grpc.BookStorageServicer):
 
         with self.lock:
             try:
-                print(f"=" * 25)
-                print(f"[Prepare] - Node info...")
-                print(f"=" * 25)
+                if self.verbose:
+                    print(f"=" * 25)
+                    print(f"[Prepare] - Node info...")
+                    print(f"=" * 25)
 
-                print(f"-" * 25)
-                print(f"node_id: {self.node_id}")
-                print()
+                    print(f"-" * 25)
+                    print(f"node_id: {self.node_id}")
+                    print()
 
                 for item in order_details['items']:
                     book_id = item['id']
-                    print(f"book_id: {book_id}")
                     required_quantity = item['quantity']
                     book = self.books_collection.find_one({"id": book_id})
                     
-                    print(f"book: {book}")
+                    if self.verbose:
+                        print(f"book_id: {book_id}")
+                        print(f"book: {book}")
 
                     # copiesAvailable = self.CheckStock(book_storage_pb2.CheckStockRequest(key=book_id))
                     copiesAvailable = book['versions'][-1]['copiesAvailable']
                     is_reserved = book.get('reserved', False)
 
-                    print(f"copiesAvailable: {copiesAvailable}")
+                    if self.verbose:
+                        print(f"copiesAvailable: {copiesAvailable}")
 
                     if book and copiesAvailable >= required_quantity: #and not is_reserved:
                         self.books_collection.update_one(
@@ -428,13 +439,13 @@ class BookStorage(book_storage_pb2_grpc.BookStorageServicer):
                 self.orders_cache[order_id] = order_details
 
 
-                
-                print()
-                print(f'book: {self.books_collection.find_one({"id": book_id})}')
-                print()
-                print(f"orders_cache: {self.orders_cache}")
-                print(f"-" * 25)
-                print()
+                if self.verbose:
+                    print()
+                    print(f'book: {self.books_collection.find_one({"id": book_id})}')
+                    print()
+                    print(f"orders_cache: {self.orders_cache}")
+                    print(f"-" * 25)
+                    print()
 
                 
                 return book_storage_pb2.PrepareResponse(willCommit=True, message="Prepare")
@@ -454,18 +465,20 @@ class BookStorage(book_storage_pb2_grpc.BookStorageServicer):
                     for item in order_details['items']:
                         book_id = item['id']
                         quantity = item['quantity']
+                        
+                        if self.verbose:
+                            print(f"=" * 25)
+                            print(f"[Commit] - Node info...")
+                            print(f"=" * 25)
+                            print(f"-" * 25)
+                            print(f"node_id: {self.node_id}")
+                            print(f"-" * 25)
+                            print("Decrement:")
+                            print(f"-" * 25)
+                            print(f"book_id: {book_id}, quantity: {quantity}")
+                            print(f"-" * 25)
 
-                        print(f"=" * 25)
-                        print(f"[Commit] - Node info...")
-                        print(f"=" * 25)
-                        print(f"-" * 25)
-                        print(f"node_id: {self.node_id}")
-                        print(f"-" * 25)
-                        print("Decrement:")
-                        print(f"-" * 25)
-                        print(f"book_id: {book_id}, quantity: {quantity}")
                         _prev_book = self.books_collection.find_one({"id": book_id})
-                        print(f"-" * 25)
 
                         self.DecrementStock(book_storage_pb2.StockUpdateRequest(key=book_id, value=quantity))
 
@@ -473,14 +486,15 @@ class BookStorage(book_storage_pb2_grpc.BookStorageServicer):
                             {"id": book_id},
                             {"$set": {"reserved": False}}
                         )
-
-                        print()
-                        print(f'prev book: {_prev_book}')
-                        print()
-                        print(f'dec book: {self.books_collection.find_one({"id": book_id})}')
-                        print(f"orders_cache: {self.orders_cache}")
-                        print(f"-" * 25)
-                        print()
+                        
+                        if self.verbose:
+                            print()
+                            print(f'prev book: {_prev_book}')
+                            print()
+                            print(f'dec book: {self.books_collection.find_one({"id": book_id})}')
+                            print(f"orders_cache: {self.orders_cache}")
+                            print(f"-" * 25)
+                            print()
                         
                     return book_storage_pb2.CommitResponse(success=True, message="Commit")
                 except Exception as e:
@@ -504,23 +518,21 @@ class BookStorage(book_storage_pb2_grpc.BookStorageServicer):
                         {"$set": {"reserved": False}}
                     )
 
-                print(f"=" * 25)
-                print(f"[Abort] - Node info...")
-                print(f"=" * 25)
+                if self.verbose:
+                    print(f"=" * 25)
+                    print(f"[Abort] - Node info...")
+                    print(f"=" * 25)
 
-                print(f"-" * 25)
-                print(f"node_id: {self.node_id}")
-                print()
-                print(f'book: {self.books_collection.find_one({"id": book_id})}')
-                print(f"orders_cache: {self.orders_cache}")
-                print(f"-" * 25)
-                print()
+                    print(f"-" * 25)
+                    print(f"node_id: {self.node_id}")
+                    print()
+                    print(f'book: {self.books_collection.find_one({"id": book_id})}')
+                    print(f"orders_cache: {self.orders_cache}")
+                    print(f"-" * 25)
+                    print()
 
                 return book_storage_pb2.AbortResponse(success=False, message="Abort")
             return book_storage_pb2.AbortResponse(success=True, message="Abort")
-
-
- 
 
 
 def serve():
@@ -533,5 +545,8 @@ def serve():
 
 if __name__ == '__main__':
     serve()
+
+
+
 
 

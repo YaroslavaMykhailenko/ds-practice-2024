@@ -1,5 +1,11 @@
 {
   "devDependencies": {
+    "concurrently": "^8.2.2",
     "cypress": "^13.9.0"
+  },
+  "scripts": {
+    "test:conflicting-orders:order1": "cypress run --spec cypress/e2e/conflicting_orders/order1.cy.js",
+    "test:conflicting-orders:order2": "cypress run --spec cypress/e2e/conflicting_orders/order2.cy.js",
+    "test:conflicting-orders": "concurrently \"npm run test:conflicting-orders:order1\" \"npm run test:conflicting-orders:order2\""
   }
 }

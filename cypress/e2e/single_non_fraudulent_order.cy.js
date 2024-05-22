@@ -29,9 +29,12 @@ describe('Single Non-Fraudulent Order', () => {
     cy.get('input[name="termsAndConditionsAccepted"]').check()
 
     // Submit the order
-    cy.get('button[type="Submit"]').click()
+    cy.get('button[type="submit"]').click()
+
+    // Wait for redirection to confirmation page
+    cy.url({ timeout: 250000 }).should('include', '/checkout/3/confirmation')
 
     // Verify order approval
-    cy.contains('Order Approved').should('be.visible')
+    cy.contains('Order Approved', { timeout: 250000 }).should('be.visible')
   })
 })
