@@ -137,18 +137,47 @@ def process_orders():
 
 
 
-@app.route('/checkout', methods=['POST'])
+# @app.route('/checkout', methods=['POST'])
+# def checkout():
+#     order_details = request.json
+#     print(order_details)
+    
+#     if not order_details:
+#         return jsonify({'error': 'Invalid request'}), 400
+    
+    
+#     enqueue_order(order_details)
+#     results = process_orders()
+
+#     print(results)
+#     raise
+
+#     if results["success"]:
+#         return jsonify({
+#             'orderId': results["order_json"].get('orderId', 'Unknown'),
+#             'status': 'Order Approved',
+#             'suggestedBooks': results["order_result"].get('suggested_books', [])
+#         }), 200
+#     else:
+#         return 
+
+
+@app.route('/checkout', methods=['POST', 'OPTIONS'])
 def checkout():
+    if request.method == 'OPTIONS':
+        return jsonify({'status': 'OK'}), 200
+    
     order_details = request.json
     print(order_details)
     
     if not order_details:
         return jsonify({'error': 'Invalid request'}), 400
     
-    
     enqueue_order(order_details)
     results = process_orders()
 
+    print(results)
+    
     if results["success"]:
         return jsonify({
             'orderId': results["order_json"].get('orderId', 'Unknown'),
@@ -156,7 +185,11 @@ def checkout():
             'suggestedBooks': results["order_result"].get('suggested_books', [])
         }), 200
     else:
-        return 
+        return jsonify({
+            'orderId': results["order_json"].get('orderId', 'Unknown'),
+            'status': 'Order Rejected',
+            'suggestedBooks': results["order_result"].get('suggested_books', [])
+        }), 200
 
 
 if __name__ == '__main__':
