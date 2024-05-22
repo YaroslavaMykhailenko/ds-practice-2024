@@ -36,57 +36,54 @@ logger = setup_logger("order_executor")
 
 
 def call_fraud_detection_service(order_details):
-    # with grpc.insecure_channel('fraud_detection:50051') as channel:
-    #     stub = fraud_detection_pb2_grpc.FraudDetectionServiceStub(channel)
-    #     order_json = json.dumps(order_details)
+    with grpc.insecure_channel('fraud_detection:50051') as channel:
+        stub = fraud_detection_pb2_grpc.FraudDetectionServiceStub(channel)
+        order_json = json.dumps(order_details)
         
-    #     # TODO: need more secure ways for validating fraud
-    #     request = fraud_detection_pb2.FraudCheckRequest(order_json=order_json)
-    #     response = stub.CheckFraud(request)
-    #     logger.info(f"is_fraudulent: {response.is_fraudulent}")
+        # TODO: need more secure ways for validating fraud
+        request = fraud_detection_pb2.FraudCheckRequest(order_json=order_json)
+        response = stub.CheckFraud(request)
+        logger.info(f"is_fraudulent: {response.is_fraudulent}")
 
-    # return response.is_fraudulent
-    return False
+    return response.is_fraudulent
 
 
 def call_transaction_verification_service(order_details):
-    # with grpc.insecure_channel('transaction_verification:50052') as channel:
-    #     stub = transaction_verification_pb2_grpc.TransactionVerificationServiceStub(channel)
-    #     order_json = json.dumps(order_details)
+    with grpc.insecure_channel('transaction_verification:50052') as channel:
+        stub = transaction_verification_pb2_grpc.TransactionVerificationServiceStub(channel)
+        order_json = json.dumps(order_details)
 
-    #     request = transaction_verification_pb2.TransactionVerificationRequest(order_json=order_json)
-    #     response = stub.VerifyTransaction(request)
-    #     logger.info(f"is_valid: {response.is_valid}")
+        request = transaction_verification_pb2.TransactionVerificationRequest(order_json=order_json)
+        response = stub.VerifyTransaction(request)
+        logger.info(f"is_valid: {response.is_valid}")
 
-    # return response.is_valid
-    return True
+    return response.is_valid
 
 
 def call_suggestions_service(order_details):
-    # with grpc.insecure_channel('suggestions:50053') as channel:
-    #     stub = suggestions_pb2_grpc.SuggestionsServiceStub(channel)
-    #     order_json = json.dumps(order_details)
+    with grpc.insecure_channel('suggestions:50053') as channel:
+        stub = suggestions_pb2_grpc.SuggestionsServiceStub(channel)
+        order_json = json.dumps(order_details)
 
-    #     request = suggestions_pb2.SuggestionsRequest(order_json=order_json)
-    #     response = stub.GetSuggestions(request)
+        request = suggestions_pb2.SuggestionsRequest(order_json=order_json)
+        response = stub.GetSuggestions(request)
         
-    #     suggested_books = [
-    #         {
-    #             'bookId': book.id, 
-    #             'title': book.title, 
-    #             'author': book.author, 
-    #             'description': book.description, 
-    #             'copies': book.copies, 
-    #             'copiesAvailable': book.copiesAvailable, 
-    #             'category': book.category, 
-    #             'img': book.img, 
-    #             'price': book.price
-    #         } for book in response.suggestions]
+        suggested_books = [
+            {
+                'bookId': book.id, 
+                'title': book.title, 
+                'author': book.author, 
+                'description': book.description, 
+                'copies': book.copies, 
+                'copiesAvailable': book.copiesAvailable, 
+                'category': book.category, 
+                'img': book.img, 
+                'price': book.price
+            } for book in response.suggestions]
     
-    # logger.info(f"suggested_books: {suggested_books}")
+    logger.info(f"suggested_books: {suggested_books}")
 
-    # return suggested_books
-    return []
+    return suggested_books
 
 
 # TEMP

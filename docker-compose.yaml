@@ -154,6 +154,7 @@ services:
       - ./utils:/app/utils
       - ./payment/src:/app/payment/src
 
+
   # ---- books database ----
   book_storage_1:
     platform: linux/arm64
@@ -165,7 +166,7 @@ services:
     environment:
       - PYTHONUNBUFFERED=TRUE
       - PYTHONFILE=/app/book_storage/src/app.py
-      - MONGO_URI=mongodb://admin:password@mongodb:27017/bookstore
+      - MONGO_URI=mongodb://admin:password@mongodb_1:27017/bookstore
       - ZK_HOSTS=zookeeper:2181
       - SERVICE_ID=book_storage_1
     volumes:
@@ -183,7 +184,7 @@ services:
     environment:
       - PYTHONUNBUFFERED=TRUE
       - PYTHONFILE=/app/book_storage/src/app.py
-      - MONGO_URI=mongodb://admin:password@mongodb:27017/bookstore
+      - MONGO_URI=mongodb://admin:password@mongodb_2:27017/bookstore
       - ZK_HOSTS=zookeeper:2181
       - SERVICE_ID=book_storage_2
     volumes:
@@ -201,7 +202,7 @@ services:
     environment:
       - PYTHONUNBUFFERED=TRUE
       - PYTHONFILE=/app/book_storage/src/app.py
-      - MONGO_URI=mongodb://admin:password@mongodb:27017/bookstore
+      - MONGO_URI=mongodb://admin:password@mongodb_3:27017/bookstore
       - ZK_HOSTS=zookeeper:2181
       - SERVICE_ID=book_storage_3
     volumes:
@@ -209,17 +210,10 @@ services:
       - ./book_storage/src:/app/book_storage/src
 
 
-  zookeeper:
-    image: zookeeper:3.5
-    ports:
-      - "2181:2181"
-
-
-
   # ---- databases ----
   # https://gist.github.com/gbzarelli/c15b607d62fc98ae436564bf8129ea8e
-  mongodb:
-    container_name: mongodb
+  mongodb_1:
+    container_name: mongodb_1
     image: mongo:latest
     restart: always
     environment:
@@ -227,48 +221,60 @@ services:
       MONGO_INITDB_ROOT_USERNAME: admin
       MONGO_INITDB_ROOT_PASSWORD: password
     volumes:
-      - mongodb_data:/data/db
+      - mongodb_data_1:/data/db
       - ./mongodb/init_scripts/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
     ports:
       - "27017:27017"
+    command: --quiet
 
-  # mongodb_users:
-  #   container_name: mongodb_users
-  #   image: mongo:latest
-  #   restart: always
-  #   environment:
-  #     MONGO_INITDB_DATABASE: users
-  #     MONGO_INITDB_ROOT_USERNAME: admin
-  #     MONGO_INITDB_ROOT_PASSWORD: password
-  #   volumes:
-  #     - mongodb_users_data:/data/db
-  #   ports:
-  #     - "27018:27017"
 
-  # mongo-express:
-  #   image: mongo-express
-  #   restart: always
-  #   ports:
-  #     - "8099:8081"
-  #   environment:
-  #     ME_CONFIG_MONGODB_ADMINUSERNAME: admin
-  #     ME_CONFIG_MONGODB_ADMINPASSWORD: password
-  #     # ME_CONFIG_MONGODB_SERVER: mongodb
-  #     ME_CONFIG_MONGODB_PORT: 27017
-  #   depends_on:
-  #     - mongo
-  #   links:
-  #     - mongo
+  mongodb_2:
+    container_name: mongodb_2
+    image: mongo:latest
+    restart: always
+    environment:
+      MONGO_INITDB_DATABASE: bookstore
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password
+    volumes:
+      - mongodb_data_2:/data/db
+      - ./mongodb/init_scripts/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    ports:
+      - "27018:27017"
+    command: --quiet
+
+
+  mongodb_3:
+    container_name: mongodb_3
+    image: mongo:latest
+    restart: always
+    environment:
+      MONGO_INITDB_DATABASE: bookstore
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password
+    volumes:
+      - mongodb_data_3:/data/db
+      - ./mongodb/init_scripts/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    ports:
+      - "27019:27017"
+    command: --quiet
 
 
   redis:
     image: redis:alpine
     ports:
       - "6379:6379"
+
+  zookeeper:
+    image: zookeeper:3.5
+    ports:
+      - "2181:2181"
     
-    
+
 volumes:
-  mongodb_data:
+  mongodb_data_1:
+  mongodb_data_2:
+  mongodb_data_3:
   mongodb_users_data:
 
 
