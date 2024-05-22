@@ -14,7 +14,7 @@ describe('Single Non-Fraudulent Order', () => {
     cy.get('input[name="userContact"]').type('58180469')
 
     // Fill in credit card information
-    cy.get('input[name="creditCardNumber"]').type('1234567890987654')
+    cy.get('input[name="creditCardNumber"]').type('4111111111111111')
     cy.get('input[name="creditCardExpirationDate"]').type('12/26')
     cy.get('input[name="creditCardCVV"]').type('123')
 

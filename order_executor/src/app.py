@@ -222,8 +222,18 @@ class OrderExecutor(order_executor_pb2_grpc.OrderExecutorServiceServicer):
                 
                 if order.id:
                     order_results = self._ProcessOrder(order)
+
+                    # Check for fraud and validity before sending prepare requests.
+                    is_fraudulent = order_results["is_fraudulent"]
+                    is_valid = order_results["is_valid"]
+                    
                     order_results = json.dumps(order_results)
 
+                    if is_fraudulent or not is_valid:
+                        logger.info(f"Order validation failed. Fraudulent: {is_fraudulent}, Valid: {is_valid}")
+                        return order_executor_pb2.ProcessOrderResponse(success=False, order_json=order.order_json, order_result=order_results)
+
+                    # Order is fine, prepare to commit transaction.
                     payment_result, db_result = self.HandleOrderTransaction(order)
                      
                     while payment_result.message == 'Abort' or db_result.message == 'Abort':
@@ -238,7 +248,7 @@ class OrderExecutor(order_executor_pb2_grpc.OrderExecutorServiceServicer):
                             logger.info('Order processed unsuccessfully. Error in payment or db commit')
                             return order_executor_pb2.ProcessOrderResponse(success=False, order_json=order.order_json, order_result={})
                 else:
-                    return order_executor_pb2.ProcessOrderResponse(success=False, order_json=order.order_json, order_result=order_results)
+                    return order_executor_pb2.ProcessOrderResponse(success=False, order_json=order.order_json, order_result={})
         
         elif leader_address:
             print(f"Rerouting order to the leader at {leader_address}")
@@ -251,7 +261,6 @@ class OrderExecutor(order_executor_pb2_grpc.OrderExecutorServiceServicer):
         print(f"Leader {self.service_id} processed order {order.id}: {order.order_json}")
         
         order_details = json.loads(order.order_json)
-
         results = {}
 
         def fraud_detection_wrapper():
@@ -282,10 +291,9 @@ class OrderExecutor(order_executor_pb2_grpc.OrderExecutorServiceServicer):
     
 
     def HandleOrderTransaction(self, order):
-
         # Start 2PC        
         logger.info(f"2PC protocol...")
-        logger.info(f"Executor sent 'prepare message' to servises...")
+        logger.info(f"Executor sent 'prepare message' to services...")
 
         with grpc.insecure_channel('payment_service:50058') as channel:
             stub = payment_pb2_grpc.PaymentServiceStub(channel)
@@ -297,10 +305,7 @@ class OrderExecutor(order_executor_pb2_grpc.OrderExecutorServiceServicer):
             prepare_book_request = book_storage_pb2.PrepareRequest(order_id=order.id, order_details_json=order.order_json, message='VOTE_REQUEST')
             prepare_book_response = stub.Prepare(prepare_book_request)
         
-        
-
         if prepare_payment_response.willCommit and prepare_book_response.willCommit:
-
             logger.info(f"All services ready to commit!")
             logger.info(f"Executor sent 'global commit message' to services...")
 
@@ -315,23 +320,36 @@ class OrderExecutor(order_executor_pb2_grpc.OrderExecutorServiceServicer):
                 commit_book_response = stub.Commit(commit_book_request)
 
             return commit_payment_response, commit_book_response      
-
-        
         else:
             logger.info(f"One of the services abort to commit!")
             logger.info(f"Executor sent 'global abort message' to services...")
 
-            with grpc.insecure_channel('payment_service:50058') as channel:
-                stub = payment_pb2_grpc.PaymentServiceStub(channel)
-                abort_payment_request = payment_pb2.AbortRequest(order_id=order.id, message='GLOBAL_ABORT')
-                abort_payment_response = stub.Abort(abort_payment_request)
+            return self.AbortTransaction(order, 'Prepare Vote Failed')
 
-            with grpc.insecure_channel('book_storage_1:50060') as channel:
-                stub = book_storage_pb2_grpc.BookStorageStub(channel)
-                abort_book_request = book_storage_pb2.AbortRequest(order_id=order.id, message='GLOBAL_ABORT')
-                abort_book_response = stub.Abort(abort_book_request)
+    def AbortTransaction(self, order, reason):
+        logger.info(f"Aborting transaction for order {order.id}: {reason}")
 
-            return abort_payment_response, abort_book_response
+        with grpc.insecure_channel('payment_service:50058') as channel:
+            stub = payment_pb2_grpc.PaymentServiceStub(channel)
+            abort_payment_request = payment_pb2.AbortRequest(order_id=order.id, message='GLOBAL_ABORT')
+            abort_payment_response = stub.Abort(abort_payment_request)
+
+        print("Recieved ABORT from PaymentService")
+        print()
+
+        with grpc.insecure_channel('book_storage_1:50060') as channel:
+            stub = book_storage_pb2_grpc.BookStorageStub(channel)
+            abort_book_request = book_storage_pb2.AbortRequest(order_id=order.id, message='GLOBAL_ABORT')
+            abort_book_response = stub.Abort(abort_book_request)
+
+        print("Recieved ABORT from BookStorage")
+        print()
+
+        print(abort_payment_response)
+        print(abort_book_response)
+
+        return abort_payment_response, abort_book_response
+
 
 
 def serve():

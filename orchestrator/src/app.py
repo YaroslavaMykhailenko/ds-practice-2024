@@ -21,18 +21,48 @@ CORS(app)
 
 from pymongo import MongoClient
 MONGO_URI = os.getenv('MONGO_URI', 'mongodb://admin:password@mongo:27017/bookstore')
+logger.info(f"initializing orchestrator with MONGO_URI: {MONGO_URI}")
 client = MongoClient(MONGO_URI)
 db = client['bookstore']
 
 
 # TODO: these functions should be outside
+# @app.route('/api/books', methods=['GET'])
+# def get_books():
+#     books_cursor = db.books.find({})
+#     books = list(books_cursor)
+#     # print(books)
+#     for book in books:
+#         book['_id'] = str(book['_id'])
+
+#     if books:
+#         return jsonify(books)
+#     else:
+#         return jsonify({"error": "Books not found"}), 404
+
+
+# @app.route('/api/books/<bookId>', methods=['GET'])
+# def get_book(bookId):
+#     book = db.books.find_one({"id": bookId}, {'_id': 0})
+#     print(book)
+#     if book:
+#         return jsonify(book)
+#     else:
+#         return jsonify({"error": "Book not found"}), 404
+
+
+
 @app.route('/api/books', methods=['GET'])
 def get_books():
     books_cursor = db.books.find({})
     books = list(books_cursor)
-    # print(books)
     for book in books:
         book['_id'] = str(book['_id'])
+        if 'versions' in book and book['versions']:
+            latest_version = book['versions'][-1]
+            for key, value in latest_version.items():
+                book[key] = value
+            del book['versions']
 
     if books:
         return jsonify(books)
@@ -44,6 +74,11 @@ def get_books():
 def get_book(bookId):
     book = db.books.find_one({"id": bookId}, {'_id': 0})
     if book:
+        if 'versions' in book and book['versions']:
+            latest_version = book['versions'][-1]
+            for key, value in latest_version.items():
+                book[key] = value
+            del book['versions']
         return jsonify(book)
     else:
         return jsonify({"error": "Book not found"}), 404
@@ -125,7 +160,7 @@ def process_orders():
         channel = grpc.insecure_channel(leader_address)
         stub = order_executor_pb2_grpc.OrderExecutorServiceStub(channel)
         response = stub.ProcessOrder(order_executor_pb2.ProcessOrderRequest())
-        print(f"Response from executor: {response.order_json}")
+        # print(f"Response from executor: {response.order_json}")
     except grpc.RpcError as e:
         print(f"Failed to process order with executor at {leader_address}: {e}")
 
@@ -136,30 +171,11 @@ def process_orders():
     }
 
 
+def confirm_order(results):
+    return results.get("success", False) \
+        and not results["order_result"].get("is_fraudulent", True) \
+        and results["order_result"].get("is_valid", False)
 
-# @app.route('/checkout', methods=['POST'])
-# def checkout():
-#     order_details = request.json
-#     print(order_details)
-    
-#     if not order_details:
-#         return jsonify({'error': 'Invalid request'}), 400
-    
-    
-#     enqueue_order(order_details)
-#     results = process_orders()
-
-#     print(results)
-#     raise
-
-#     if results["success"]:
-#         return jsonify({
-#             'orderId': results["order_json"].get('orderId', 'Unknown'),
-#             'status': 'Order Approved',
-#             'suggestedBooks': results["order_result"].get('suggested_books', [])
-#         }), 200
-#     else:
-#         return 
 
 
 @app.route('/checkout', methods=['POST', 'OPTIONS'])
@@ -168,6 +184,7 @@ def checkout():
         return jsonify({'status': 'OK'}), 200
     
     order_details = request.json
+    print("order_details")
     print(order_details)
     
     if not order_details:
@@ -176,8 +193,10 @@ def checkout():
     enqueue_order(order_details)
     results = process_orders()
 
+    print("results")
     print(results)
     
+    # if confirm_order(results):
     if results["success"]:
         return jsonify({
             'orderId': results["order_json"].get('orderId', 'Unknown'),

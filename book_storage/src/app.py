@@ -77,6 +77,7 @@ class BookStorage(book_storage_pb2_grpc.BookStorageServicer):
     def Write(self, request, context):
         with self.lock:
             book = self.books_collection.find_one({"id": request.key})
+            print(f"current book: {book}")
 
             if 'versions' in book and book:
                 new_version_number = book['versions'][-1]['version'] + 1
@@ -226,7 +227,9 @@ class BookStorage(book_storage_pb2_grpc.BookStorageServicer):
 
     def Read(self, request, context):
         with self.lock:
-            book = self.books_collection.find_one({"id": request.key}, {"versions": {"$slice": -1}})
+            # book = self.books_collection.find_one({"id": request.key}, {"versions": {"$slice": -1}})
+            book = self.books_collection.find_one({"id": request.key})
+            # book = book["versions"][-1]
 
             print(f"=" * 25)
             print(f"[Read] - Node info...")
@@ -306,10 +309,14 @@ class BookStorage(book_storage_pb2_grpc.BookStorageServicer):
         if book:
             latest_version = book['versions'][-1]
 
+            print(f"latest_version: {latest_version}")
+
             new_version = dict(latest_version)
             new_version['copiesAvailable'] -= request.value
             new_version['version'] += 1
             new_version['clean'] = False
+
+            print(f"new_version: {new_version}")
 
             self.books_collection.update_one(
                 {"_id": book['_id']},

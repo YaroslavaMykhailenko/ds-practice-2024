@@ -74,12 +74,14 @@ class PaymentService(payment_pb2_grpc.PaymentServiceServicer):
             return payment_pb2.CommitResponse(success=False, message="Commit", order_details_json=json.dumps(order_details))
 
     def Abort(self, request, context):
+        order_details = None
         if request.order_id in self.orders_cache:
             order_details = self.orders_cache.pop(request.order_id)
             self.unlock_user_account(order_details['creditCard'])
 
         self.running = False
-        return payment_pb2.AbortResponse(success=False, message="Abort", order_details_json=json.dumps(order_details))
+        return payment_pb2.AbortResponse(success=False, message="Abort", 
+                                         order_details_json=json.dumps(order_details) if order_details else {})
 
 def serve():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
