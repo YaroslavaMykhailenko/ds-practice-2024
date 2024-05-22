@@ -45,7 +45,7 @@ def main():
         # print(f"Write Response: {write_response.success}")
 
         # Read the book back from the database
-        read_response = stub.Read(book_storage_pb2.ReadRequest(key="5"))
+        read_response = stub.Read(book_storage_pb2.ReadRequest(key="1"))
         if read_response.found:
             print(f"Read Response: {read_response.value}")
         else:
