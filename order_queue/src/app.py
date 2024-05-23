@@ -3,9 +3,29 @@ import grpc
 import json
 import queue
 
+
+from opentelemetry import metrics
+from opentelemetry.sdk.resources import SERVICE_NAME, Resource
+from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
+from opentelemetry.sdk.metrics import MeterProvider
+from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
+
+
 from utils.pb.order_queue import order_queue_pb2
 from utils.pb.order_queue import order_queue_pb2_grpc
 
+resource = Resource(attributes={SERVICE_NAME: "order_queue"})
+reader = PeriodicExportingMetricReader(OTLPMetricExporter(endpoint="http://observability:4317"))
+meterProvider = MeterProvider(resource=resource, metric_readers=[reader])
+metrics.set_meter_provider(meterProvider)
+
+meter = metrics.get_meter(__name__)
+
+queue_items_counter = meter.create_up_down_counter(
+    "order_queue_items",
+    description="Counts the number of items in the order queue",
+    unit="1"
+)
 
 class OrderQueueService(order_queue_pb2_grpc.OrderQueueServiceServicer):
     def __init__(self):
@@ -27,6 +47,7 @@ class OrderQueueService(order_queue_pb2_grpc.OrderQueueServiceServicer):
 
         # min-heap.
         self.order_queue.put((-priority, order_id, order_json))
+        queue_items_counter.add(1)
         return order_queue_pb2.EnqueueResponse(success=True)
 
 
@@ -35,6 +56,7 @@ class OrderQueueService(order_queue_pb2_grpc.OrderQueueServiceServicer):
             return order_queue_pb2.Order()
         
         _, order_id, order_json = self.order_queue.get()
+        queue_items_counter.add(-1)
         return order_queue_pb2.Order(id=order_id, order_json=order_json, priority=0)
 
 def serve():
