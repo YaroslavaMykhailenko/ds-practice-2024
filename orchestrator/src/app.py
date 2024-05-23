@@ -4,6 +4,33 @@ from utils.pb.suggestions import suggestions_pb2, suggestions_pb2_grpc
 from utils.pb.order_queue import order_queue_pb2, order_queue_pb2_grpc
 from utils.pb.order_executor import order_executor_pb2, order_executor_pb2_grpc
 
+
+# from opentelemetry import metrics
+# from opentelemetry.sdk.metrics import MeterProvider
+# from opentelemetry.sdk.resources import SERVICE_NAME, Resource
+# from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
+# from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
+# from opentelemetry.sdk.metrics.view import ExplicitBucketHistogramAggregation, View
+
+
+from opentelemetry import trace, metrics
+from opentelemetry.instrumentation.flask import FlaskInstrumentor
+from opentelemetry.instrumentation.grpc import GrpcInstrumentorClient
+from opentelemetry.instrumentation.redis import RedisInstrumentor
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.sdk.metrics import MeterProvider
+from opentelemetry.sdk.resources import SERVICE_NAME, Resource
+from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
+from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
+from opentelemetry.sdk.metrics.view import ExplicitBucketHistogramAggregation, View
+
+
+
+
+import time
+
 import grpc
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -24,6 +51,62 @@ MONGO_URI = os.getenv('MONGO_URI', 'mongodb://admin:password@mongo:27017/booksto
 logger.info(f"initializing orchestrator with MONGO_URI: {MONGO_URI}")
 client = MongoClient(MONGO_URI)
 db = client['bookstore']
+
+# resource = Resource(attributes={
+#     SERVICE_NAME: "orchestrator"
+# })
+trace.set_tracer_provider(TracerProvider(resource=Resource.create({SERVICE_NAME: "orchestrator"})))
+tracer = trace.get_tracer(__name__)
+
+otlp_exporter = OTLPSpanExporter(endpoint="http://observability:4317", insecure=True)
+span_processor = BatchSpanProcessor(otlp_exporter)
+trace.get_tracer_provider().add_span_processor(span_processor)
+
+# Flask, gRPC and Redis
+FlaskInstrumentor().instrument_app(app)
+GrpcInstrumentorClient().instrument()
+RedisInstrumentor().instrument()
+
+
+reader = PeriodicExportingMetricReader(
+    OTLPMetricExporter(endpoint="http://observability:4317")
+)
+
+duration_histogram_view = View(
+    instrument_type=metrics.Histogram,
+    aggregation=ExplicitBucketHistogramAggregation(
+        boundaries=[10, 25, 50, 75, 100, 250, 500, 750, 1000, 2500, 5000]
+    )
+)
+
+
+
+meterProvider = MeterProvider(
+    resource=Resource.create({SERVICE_NAME: "orchestrator"}),
+    metric_readers=[reader],
+    views=[duration_histogram_view]
+)
+
+metrics.set_meter_provider(meterProvider)
+
+order_approved_counter = meterProvider.get_meter(__name__).create_counter(
+    "orchestrator_order_approved_count",
+    description="Counts the number of approved orders",
+    unit="1",
+)
+
+order_rejected_counter = meterProvider.get_meter(__name__).create_counter(
+    "orchestrator_order_rejected_count",
+    description="Counts the number of rejected orders",
+    unit="1",
+)
+
+duration_histogram = meterProvider.get_meter(__name__).create_histogram(
+    "orchestrator_duration_ms",
+    description="Duration distribution of orchestrator requests in milliseconds",
+    unit="milliseconds",
+)
+
 
 
 # TODO: these functions should be outside
@@ -54,6 +137,7 @@ db = client['bookstore']
 
 @app.route('/api/books', methods=['GET'])
 def get_books():
+
     books_cursor = db.books.find({})
     books = list(books_cursor)
     for book in books:
@@ -105,7 +189,6 @@ def enqueue_order(order_details):
 
 # =============== temp ===============
 import redis
-import time
 import random
 
 REDIS_HOST = os.getenv('REDIS_HOST', 'redis')
@@ -180,35 +263,49 @@ def confirm_order(results):
 
 @app.route('/checkout', methods=['POST', 'OPTIONS'])
 def checkout():
-    if request.method == 'OPTIONS':
-        return jsonify({'status': 'OK'}), 200
-    
-    order_details = request.json
-    print("order_details")
-    print(order_details)
-    
-    if not order_details:
-        return jsonify({'error': 'Invalid request'}), 400
-    
-    enqueue_order(order_details)
-    results = process_orders()
+    tracer = trace.get_tracer(__name__)
+    with tracer.start_as_current_span("checkout"):
+        start_time = time.time()
 
-    print("results")
-    print(results)
-    
-    # if confirm_order(results):
-    if results["success"]:
-        return jsonify({
-            'orderId': results["order_json"].get('orderId', 'Unknown'),
-            'status': 'Order Approved',
-            'suggestedBooks': results["order_result"].get('suggested_books', [])
-        }), 200
-    else:
-        return jsonify({
-            'orderId': results["order_json"].get('orderId', 'Unknown'),
-            'status': 'Order Rejected',
-            'suggestedBooks': results["order_result"].get('suggested_books', [])
-        }), 200
+        if request.method == 'OPTIONS':
+            return jsonify({'status': 'OK'}), 200
+        
+        order_details = request.json
+        print("order_details")
+        print(order_details)
+        
+        if not order_details:
+            return jsonify({'error': 'Invalid request'}), 400
+        
+        with tracer.start_as_current_span("enqueue_order"):
+            enqueue_order(order_details)
+
+        with tracer.start_as_current_span("process_orders"):
+            results = process_orders()
+
+        end_time = time.time()
+        duration_ms = (end_time - start_time) * 1000  # Convert duration to milliseconds
+        duration_histogram.record(duration_ms)
+
+
+        print("results")
+        print(results)
+        
+        # if confirm_order(results):
+        if results["success"]:
+            order_approved_counter.add(1, {"service": "orchestrator", "status": "Order Approved"})
+            return jsonify({
+                'orderId': results["order_json"].get('orderId', 'Unknown'),
+                'status': 'Order Approved',
+                'suggestedBooks': results["order_result"].get('suggested_books', [])
+            }), 200
+        else:
+            order_rejected_counter.add(1, {"service": "orchestrator", "status": "Order Rejected"})
+            return jsonify({
+                'orderId': results["order_json"].get('orderId', 'Unknown'),
+                'status': 'Order Rejected',
+                'suggestedBooks': results["order_result"].get('suggested_books', [])
+            }), 200
 
 
 if __name__ == '__main__':

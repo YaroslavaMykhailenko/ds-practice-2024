@@ -6,6 +6,12 @@ import threading
 from concurrent import futures
 import json
 import random
+import psutil
+from opentelemetry import metrics
+from opentelemetry.sdk.resources import SERVICE_NAME, Resource
+from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
+from opentelemetry.sdk.metrics import MeterProvider
+from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 
 from utils.pb.fraud_detection import fraud_detection_pb2, fraud_detection_pb2_grpc
 from utils.pb.transaction_verification import transaction_verification_pb2, transaction_verification_pb2_grpc
@@ -19,6 +25,30 @@ from utils.pb.payment import payment_pb2_grpc
 
 from utils.pb.book_storage import book_storage_pb2
 from utils.pb.book_storage import book_storage_pb2_grpc
+
+
+resource = Resource(attributes={SERVICE_NAME: "order_executor"})
+reader = PeriodicExportingMetricReader(OTLPMetricExporter(endpoint="http://observability:4317"))
+meterProvider = MeterProvider(resource=resource, metric_readers=[reader])
+metrics.set_meter_provider(meterProvider)
+
+meter = metrics.get_meter(__name__)
+
+active_orders_counter = meter.create_up_down_counter(
+    "order_executor_active_orders",
+    description="Counts the number of active orders being processed",
+    unit="1"
+)
+
+def cpu_usage_callback(callback_options):
+    return [metrics.Observation(psutil.cpu_percent(), {})]
+
+meter.create_observable_gauge(
+    "order_executor_cpu_usage",
+    callbacks=[cpu_usage_callback],
+    description="Tracks the CPU usage of the order executor",
+    unit="percentage"
+)
 
 REDIS_HOST = os.getenv('REDIS_HOST', 'redis')
 REDIS_PORT = int(os.environ.get("REDIS_PORT", "6379"))
@@ -214,6 +244,7 @@ class OrderExecutor(order_executor_pb2_grpc.OrderExecutorServiceServicer):
         print(f"leader_address: {leader_address}")
         print(f"selected leader: {self.redis_client.get(LEADER_KEY)}")
         print()
+        active_orders_counter.add(1)
 
         if leader_address and self.redis_client.get(LEADER_KEY) == self.service_id:
             with grpc.insecure_channel(ORDER_QUEUE_SERVICE) as channel:
@@ -231,6 +262,7 @@ class OrderExecutor(order_executor_pb2_grpc.OrderExecutorServiceServicer):
 
                     if is_fraudulent or not is_valid:
                         logger.info(f"Order validation failed. Fraudulent: {is_fraudulent}, Valid: {is_valid}")
+                        active_orders_counter.add(-1)
                         return order_executor_pb2.ProcessOrderResponse(success=False, order_json=order.order_json, order_result=order_results)
 
                     # Order is fine, prepare to commit transaction.
@@ -243,17 +275,21 @@ class OrderExecutor(order_executor_pb2_grpc.OrderExecutorServiceServicer):
                     if payment_result.message == 'Commit' and db_result.message == 'Commit':
                         if payment_result.success and db_result.success: 
                             logger.info('Order processed successfully. Payment completed and db updated')
+                            active_orders_counter.add(-1)
                             return order_executor_pb2.ProcessOrderResponse(success=True, order_json=order.order_json, order_result=order_results)
                         else:
                             logger.info('Order processed unsuccessfully. Error in payment or db commit')
+                            active_orders_counter.add(-1)
                             return order_executor_pb2.ProcessOrderResponse(success=False, order_json=order.order_json, order_result={})
                 else:
+                    active_orders_counter.add(-1)
                     return order_executor_pb2.ProcessOrderResponse(success=False, order_json=order.order_json, order_result={})
         
         elif leader_address:
             print(f"Rerouting order to the leader at {leader_address}")
             return self.reroute_to_leader(leader_address, request)
         else:
+            active_orders_counter.add(-1)
             return order_executor_pb2.ProcessOrderResponse(success=False, order_json={}, order_result={})
         
     

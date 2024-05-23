@@ -269,6 +269,15 @@ services:
     image: zookeeper:3.5
     ports:
       - "2181:2181"
+  
+  observability:
+    image: grafana/otel-lgtm
+    ports:
+      - "3001:3000"
+      - "4317:4317"
+      - "4318:4318"
+    environment:
+      - OTEL_METRIC_EXPORT_INTERVAL=1000
     
 
 volumes:
