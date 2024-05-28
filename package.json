@@ -6,6 +6,8 @@
   "scripts": {
     "test:conflicting-orders:order1": "cypress run --spec cypress/e2e/conflicting_orders/order1.cy.js",
     "test:conflicting-orders:order2": "cypress run --spec cypress/e2e/conflicting_orders/order2.cy.js",
-    "test:conflicting-orders": "concurrently \"npm run test:conflicting-orders:order1\" \"npm run test:conflicting-orders:order2\""
+    "test:conflicting-orders:order3": "cypress run --spec cypress/e2e/conflicting_orders/order3.cy.js",
+    "test:conflicting-orders:order4": "cypress run --spec cypress/e2e/conflicting_orders/order4.cy.js",
+    "test:conflicting-orders": "concurrently \"npm run test:conflicting-orders:order1\" \"npm run test:conflicting-orders:order2\" \"npm run test:conflicting-orders:order3\" \"npm run test:conflicting-orders:order4\""
   }
 }

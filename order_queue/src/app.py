@@ -23,8 +23,7 @@ meter = metrics.get_meter(__name__)
 
 queue_items_counter = meter.create_up_down_counter(
     "order_queue_items",
-    description="Counts the number of items in the order queue",
-    unit="1"
+    description="Counts the number of items in the order queue"
 )
 
 class OrderQueueService(order_queue_pb2_grpc.OrderQueueServiceServicer):

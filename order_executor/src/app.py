@@ -36,8 +36,7 @@ meter = metrics.get_meter(__name__)
 
 active_orders_counter = meter.create_up_down_counter(
     "order_executor_active_orders",
-    description="Counts the number of active orders being processed",
-    unit="1"
+    description="Counts the number of active orders being processed"
 )
 
 def cpu_usage_callback(callback_options):
